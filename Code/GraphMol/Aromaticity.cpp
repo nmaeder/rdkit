@@ -47,11 +47,14 @@ void pickFusedRings(int curr, const INT_INT_VECT_MAP &neighMap, INT_VECT &res,
   res.push_back(curr);
 
   const auto &neighs = pos->second;
-#if 0
-    std::cerr<<"depth: "<<depth<<" ring: "<<curr<<" size: "<<res.size()<<" neighs: "<<neighs.size()<<std::endl;
-    std::cerr<<"   ";
-    std::copy(neighs.begin(),neighs.end(),std::ostream_iterator<int>(std::cerr," "));
-    std::cerr<<"\n";
+#if 1
+  std::cerr << "depth: " << depth << " ring: " << curr
+            << " size: " << res.size() << " neighs: " << neighs.size()
+            << std::endl;
+  std::cerr << "   ";
+  std::copy(neighs.begin(), neighs.end(),
+            std::ostream_iterator<int>(std::cerr, " "));
+  std::cerr << "\n";
 #endif
   for (int neigh : neighs) {
     if (!done[neigh]) {
@@ -300,6 +303,7 @@ bool applyHuckel(ROMol &, const INT_VECT &ring, const VECT_EDON_TYPE &edon,
     if (edonType == AnyElectronDonorType) {
       ++nAnyElectronDonorType;
       if (nAnyElectronDonorType > 1) {
+        std::cerr << " SKIP FROM ATOM " << idx << std::endl;
         return false;
       }
     }
@@ -318,10 +322,12 @@ bool applyHuckel(ROMol &, const INT_VECT &ring, const VECT_EDON_TYPE &edon,
   } else if (rup == 2) {
     aromatic = true;
   }
-#if 0
-    std::cerr <<" ring: ";
-    std::copy(ring.begin(),ring.end(),std::ostream_iterator<int>(std::cerr," "));
-    std::cerr <<" rlw: "<<rlw<<" rup: "<<rup<<" aromatic? "<<aromatic<<std::endl;
+#if 1
+  std::cerr << " ring: ";
+  std::copy(ring.begin(), ring.end(),
+            std::ostream_iterator<int>(std::cerr, " "));
+  std::cerr << " rlw: " << rlw << " rup: " << rup << " aromatic? " << aromatic
+            << std::endl;
 #endif
   return aromatic;
 }
@@ -398,7 +404,12 @@ void applyHuckelToFused(
 
     // check aromaticity on the current fused system
     INT_VECT atsInRingSystem(mol.getNumAtoms(), 0);
+    std::cerr << "FUSING " << std::endl;
     for (auto ridx : curRs) {
+      std::cerr << "  ";
+      std::copy(srings[ridx].begin(), srings[ridx].end(),
+                std::ostream_iterator<int>(std::cerr, ", "));
+      std::cerr << std::endl;
       for (auto rid : srings[ridx]) {
         ++atsInRingSystem[rid];
       }
@@ -410,9 +421,11 @@ void applyHuckelToFused(
       // the central atom in acepentalene was being included in the count of
       // aromatic atoms
       if (atsInRingSystem[i] == 1 || atsInRingSystem[i] == 2) {
+        std::cerr << " " << i << "(" << atsInRingSystem[i] << ")";
         unon.push_back(i);
       }
     }
+    std::cerr << std::endl;
     if (applyHuckel(mol, unon, edon, minRingSize)) {
       // mark the atoms and bonds in these rings to be aromatic
       markAtomsBondsArom(mol, srings, brings, curRs, doneBonds, bondsByIdx);

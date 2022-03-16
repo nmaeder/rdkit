@@ -2628,3 +2628,17 @@ TEST_CASE("Github #5055") {
     REQUIRE(m);
   }
 }
+
+TEST_CASE("foofoo") {
+  SECTION("as reported") {
+    auto m = "C1=CC2=CC=C3C=CC4=CC=C5C=CN1*1*2*3*4N51"_smiles;
+    REQUIRE(m);
+    std::cerr << "  rings " << std::endl;
+    for (const auto &ring : m->getRingInfo()->atomRings()) {
+      std::copy(ring.begin(), ring.end(),
+                std::ostream_iterator<int>(std::cerr, ", "));
+      std::cerr << std::endl;
+    }
+    m->debugMol(std::cerr);
+  }
+}
