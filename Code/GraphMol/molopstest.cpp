@@ -3545,6 +3545,9 @@ void testSFNetIssue2196817() {
 
   {
     ROMOL_SPTR m = "C1=CC2=CC=C3C=CC4=CC=C5C=CN1*1*2*3*4N51"_smiles;
+    m->debugMol(std::cerr);
+    // std::cerr << "!!!!! " << MolToV3KMolBlock(*m, true, -1, false) <<
+    // std::endl;
     for (const auto a : m->atoms()) {
       TEST_ASSERT(a->getIsAromatic());
     }

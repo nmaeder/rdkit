@@ -2621,7 +2621,8 @@ M  END
   }
 }
 
-TEST_CASE("Github #5055") {
+TEST_CASE(
+    "Github #5055: smiles parsing error due to erroneous ring perception") {
   SECTION("as reported") {
     auto m =
         "CC1(C)NC(=O)CN2C=C(C[C@H](C(=O)NC)NC(=O)CN3CCN(C(=O)[C@H]4Cc5c([nH]c6ccccc56)CN4C(=O)CN4CN(c5ccccc5)C5(CCN(CC5)C1=O)C4=O)[C@@H](Cc1ccccc1)C3=O)[N-][NH2+]2"_smiles;
@@ -2641,4 +2642,107 @@ TEST_CASE("foofoo") {
     }
     m->debugMol(std::cerr);
   }
+}
+
+TEST_CASE("Github #5078: Can't roundtrip CHEMBL4080644 through SMILES") {
+  // SECTION("the ring-finding problem1") {
+  //   auto mol = "C1CN2CCCCN1CC2"_smiles;
+  //   REQUIRE(mol);
+
+  //   std::cerr << "  rings " << std::endl;
+  //   for (const auto &ring : mol->getRingInfo()->atomRings()) {
+  //     std::copy(ring.begin(), ring.end(),
+  //               std::ostream_iterator<int>(std::cerr, ", "));
+  //     std::cerr << std::endl;
+  //   }
+  //   // mol->debugMol(std::cerr);
+  //   CHECK(mol->getRingInfo()->atomRings().size() == 3);
+  // }
+  // SECTION("the ring-finding problem2") {
+  //   std::cerr << "---------------------------\n\n\n" << std::endl;
+  //   auto mol = "C1CCC2C(C1)N1CCCCN2C2C1CCCC2"_smiles;
+  //   REQUIRE(mol);
+
+  //   std::cerr << "  rings " << std::endl;
+  //   for (const auto &ring : mol->getRingInfo()->atomRings()) {
+  //     std::copy(ring.begin(), ring.end(),
+  //               std::ostream_iterator<int>(std::cerr, ", "));
+  //     std::cerr << std::endl;
+  //   }
+  //   mol->debugMol(std::cerr);
+  //   CHECK(mol->getRingInfo()->atomRings().size() == 5);
+  // }
+  SECTION("reported mol as SMILES") {
+    auto mol = "CC1=CC=C2C(=C1)N1C(=O)C=CC(=O)N2C2=C1C=CC(C)=C2"_smiles;
+    REQUIRE(mol);
+
+    CHECK(!mol->getAtomWithIdx(7)->getIsAromatic());
+    CHECK(!mol->getAtomWithIdx(14)->getIsAromatic());
+  }
+  SECTION("reported problem SMILES") {
+    auto mol = "Cc1ccc2c(c1)-n1-c(=O)/c=c\\c(=O)-n-2-c2cc(C)ccc2-1"_smiles;
+    REQUIRE(mol);
+
+    CHECK(!mol->getAtomWithIdx(7)->getIsAromatic());
+    CHECK(!mol->getAtomWithIdx(14)->getIsAromatic());
+  }
+#if 0
+  SECTION("as reported") {
+    auto mol = R"CTAB(
+     RDKit          2D
+ ignore me
+ 22 25  0  0  0  0  0  0  0  0999 V2000
+    6.1174   -5.5956    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    5.5355   -6.1734    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.9052   -6.9054    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.7157   -6.7800    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.8468   -5.9705    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    3.9896   -4.3666    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    3.9885   -5.1861    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    4.6965   -5.5951    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    4.6947   -3.9577    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.4033   -4.3630    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.4067   -5.1882    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.1123   -3.9452    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    6.8293   -4.3571    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.8321   -5.1820    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    7.5468   -5.5902    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    8.2590   -5.1746    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    8.2522   -4.3466    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    7.5370   -3.9422    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    3.2804   -5.5941    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    8.9563   -3.9319    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    7.6601   -5.9680    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    4.7196   -6.1277    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+  2  3  1  0
+  3  4  2  0
+  4  5  1  0
+  5  1  1  0
+  6  7  2  0
+  7  8  1  0
+  8 11  2  0
+ 10  9  2  0
+  9  6  1  0
+ 10 11  1  0
+ 10 12  1  0
+ 11  1  1  0
+  1 14  1  0
+ 13 12  1  0
+ 13 14  2  0
+ 14 15  1  0
+ 15 16  2  0
+ 16 17  1  0
+ 17 18  2  0
+ 18 13  1  0
+  7 19  1  0
+ 17 20  1  0
+  5 21  2  0
+  2 22  2  0
+  2 12  1  0
+M  END)CTAB"_ctab;
+    REQUIRE(mol);
+    CHECK(!mol->getAtomWithIdx(0)->getIsAromatic());
+    CHECK(!mol->getAtomWithIdx(11)->getIsAromatic());
+  }
+#endif
 }

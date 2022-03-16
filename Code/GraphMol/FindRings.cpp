@@ -659,6 +659,8 @@ int BFSWorkspace::smallestRingsBfs(const ROMol &mol, int root,
     }
   }
 
+  // std::cerr << "  BFS from " << root << std::endl;
+
   d_parents.assign(mol.getNumAtoms(), -1);
   d_depths.assign(mol.getNumAtoms(), 0);
 
@@ -680,9 +682,10 @@ int BFSWorkspace::smallestRingsBfs(const ROMol &mol, int root,
     const int curr = bfsq.front();
     bfsq.pop_front();
     d_done[curr] = BLACK;
-
+    // std::cerr << "    to " << curr << std::endl;
     const unsigned int depth = d_depths[curr] + 1;
     if (depth > curSize) {
+      // std::cerr << "  BREAK!" << std::endl;
       // depth is the shortest cycle I _could_ find this round.
       break;
     }
@@ -693,13 +696,17 @@ int BFSWorkspace::smallestRingsBfs(const ROMol &mol, int root,
       const Bond *bond = mol[*beg];
       ++beg;
       if (!activeBonds[bond->getIdx()]) {
+        // std::cerr << "       active bond skip for "
+        //           << bond->getOtherAtomIdx(curr) << std::endl;
         continue;
       }
       int nbrIdx = bond->getOtherAtomIdx(curr);
       if (d_done[nbrIdx] == BLACK || d_parents[curr] == nbrIdx) {
+        // std::cerr << "       color skip for " << nbrIdx << std::endl;
         continue;
       }
       if (d_done[nbrIdx] == WHITE) {
+        // std::cerr << "       explore closure at " << nbrIdx << std::endl;
         // we have never been to this node before through via any path
         d_parents[nbrIdx] = curr;
         d_done[nbrIdx] = GRAY;
@@ -709,6 +716,7 @@ int BFSWorkspace::smallestRingsBfs(const ROMol &mol, int root,
         // we have been here via a different path
         // there is a potential for ring closure here
         // stitch together the two paths
+        // std::cerr << "       some alternate path " << nbrIdx << std::endl;
 
         ring = {nbrIdx};
         // forwards path
@@ -722,8 +730,15 @@ int BFSWorkspace::smallestRingsBfs(const ROMol &mol, int root,
         ring.insert(ring.begin(), curr);
         parent = d_parents[curr];
         while (parent != -1) {
+          // std::cerr << "          trying parent " << parent << std::endl;
+
           // Is the least common ancestor not the root?
           if (std::find(ring.begin(), ring.end(), parent) != ring.end()) {
+            // std::cerr << "            died at " << parent << " : ";
+            // std::copy(ring.begin(), ring.end(),
+            //           std::ostream_iterator<int>(std::cerr, ", "));
+            // std::cerr << std::endl;
+
             ring.clear();
             break;
           }
@@ -733,6 +748,11 @@ int BFSWorkspace::smallestRingsBfs(const ROMol &mol, int root,
 
         // Found a new small ring including the root.
         if (ring.size() > 1) {
+          // std::cerr << "  found! (" << curSize << ") ";
+          // std::copy(ring.begin(), ring.end(),
+          //           std::ostream_iterator<int>(std::cerr, ", "));
+          // std::cerr << std::endl;
+
           if (ring.size() <= curSize) {
             curSize = rdcast<unsigned int>(ring.size());
             rings.push_back(ring);
@@ -779,6 +799,12 @@ bool _atomSearchBFS(const ROMol &tMol, unsigned int startAtomIdx,
           INT_VECT nv(tv);
 
           nv.push_back(rdcast<unsigned int>(*nbrIdx));
+
+          // std::cerr << "  CHECK RING ";
+          // std::copy(nv.begin(), nv.end(),
+          //           std::ostream_iterator<int>(std::cerr, ", "));
+          // std::cerr << std::endl;
+
           // make sure the ring we just found isn't already in our set
           // of rings (this was an extension of sf.net issue 249)
           auto invr = RingUtils::computeRingInvariant(nv, tMol.getNumAtoms());
@@ -974,9 +1000,10 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
       INT_VECT d2nodes;
       FindRings::pickD2Nodes(mol, d2nodes, curFrag, atomDegrees, activeBonds);
 #if 0
-          std::cerr<<"d2nodes: ";
-          std::copy(d2nodes.begin(),d2nodes.end(),std::ostream_iterator<int>(std::cerr," "));
-          std::cerr<<std::endl;
+      std::cerr << "d2nodes: ";
+      std::copy(d2nodes.begin(), d2nodes.end(),
+                std::ostream_iterator<int>(std::cerr, " "));
+      std::cerr << std::endl;
 #endif
       if (d2nodes.size() > 0) {  // deal with the current degree two nodes
         // place to record any duplicate rings discovered from the current d2
@@ -984,10 +1011,11 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
         FindRings::findRingsD2nodes(mol, fragRes, invars, d2nodes, atomDegrees,
                                     activeBonds, ringBonds, ringAtoms);
 #if 0
-            std::cerr<<"  d2nodes post: ";
-            std::copy(d2nodes.begin(),d2nodes.end(),std::ostream_iterator<int>(std::cerr," "));
-            std::cerr<<std::endl;
-            std::cerr<<"  ring bonds: "<<ringBonds<<std::endl;
+        std::cerr << "  d2nodes post: ";
+        std::copy(d2nodes.begin(), d2nodes.end(),
+                  std::ostream_iterator<int>(std::cerr, " "));
+        std::cerr << std::endl;
+        std::cerr << "  ring bonds: " << ringBonds << std::endl;
 #endif
         INT_VECT_CI d2i;
         // trim after we have dealt with all the current d2 nodes,
@@ -1025,13 +1053,14 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
     }    // done finding rings in this fragment
 
 #if 0
-        std::cerr<<"\n\nFOUND:\n";
-        for(VECT_INT_VECT::const_iterator iter=fragRes.begin();
-            iter!=fragRes.end();++iter){
-          std::cerr<<iter-fragRes.begin()<<": ";
-          std::copy(iter->begin(),iter->end(),std::ostream_iterator<int>(std::cerr," "));
-          std::cerr<<std::endl;
-        }
+    std::cerr << "\n\nFOUND:\n";
+    for (VECT_INT_VECT::const_iterator iter = fragRes.begin();
+         iter != fragRes.end(); ++iter) {
+      std::cerr << iter - fragRes.begin() << ": ";
+      std::copy(iter->begin(), iter->end(),
+                std::ostream_iterator<int>(std::cerr, " "));
+      std::cerr << std::endl;
+    }
 #endif
     // calculate the cyclomatic number for the fragment:
     int nexpt = rdcast<int>((nbnds - curFrag.size() + 1));
@@ -1091,18 +1120,19 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
     }
     // if we have more than expected we need to do some cleanup
     // otherwise do som clean up work
-    // std::cerr<<"  check: "<<ssiz<<" "<<nexpt<<std::endl;
+    // std::cerr << "  check: " << ssiz << " " << nexpt << std::endl;
     if (ssiz > nexpt) {
       FindRings::removeExtraRings(fragRes, nexpt, mol);
     }
 
 #if 0
-        std::cerr<<"\n\nKEEPING:\n";
-        for(VECT_INT_VECT::const_iterator iter=fragRes.begin();
-            iter!=fragRes.end();++iter){
-          std::copy(iter->begin(),iter->end(),std::ostream_iterator<int>(std::cerr," "));
-          std::cerr<<std::endl;
-        }
+    std::cerr << "\n\nKEEPING:\n";
+    for (VECT_INT_VECT::const_iterator iter = fragRes.begin();
+         iter != fragRes.end(); ++iter) {
+      std::copy(iter->begin(), iter->end(),
+                std::ostream_iterator<int>(std::cerr, " "));
+      std::cerr << std::endl;
+    }
 #endif
 
     res.reserve(res.size() + fragRes.size());
@@ -1149,7 +1179,6 @@ int symmetrizeSSSR(ROMol &mol, VECT_INT_VECT &res) {
   }
   const VECT_INT_VECT &extras =
       mol.getProp<VECT_INT_VECT>(common_properties::extraRings);
-
   // convert the rings to bond ids
   VECT_INT_VECT bondsssrs;
   RingUtils::convertToBonds(sssrs, bondsssrs, mol);

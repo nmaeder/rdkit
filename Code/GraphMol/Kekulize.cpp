@@ -471,7 +471,6 @@ void kekulizeFused(RWMol &mol, const VECT_INT_VECT &arings,
       for(int i=0;i<nats;++i) std::cerr << dBndCands[i];
       std::cerr << std::endl;
 #endif
-
   auto kekulized =
       kekulizeWorker(mol, allAtms, dBndCands, dBndAdds, done, maxBackTracks);
   if (!kekulized && questions.size()) {
@@ -581,12 +580,45 @@ void KekulizeFragment(RWMol &mol, const boost::dynamic_bitset<> &atomsToUse,
   RingUtils::convertToBonds(arings, allbrings, mol);
   VECT_INT_VECT brings;
   brings.reserve(allbrings.size());
-  auto copyBondRingsWithinFragment = [&bondsToUse](const INT_VECT &ring) {
-    return std::all_of(ring.begin(), ring.end(),
-                       [&bondsToUse](const int bi) { return bondsToUse[bi]; });
+  auto copyBondRingsWithinFragment = [&](const INT_VECT &ring) {
+    return std::all_of(
+               ring.begin(), ring.end(),
+               [&bondsToUse](const int bi) { return bondsToUse[bi]; }) &&
+           !std::any_of(ring.begin(), ring.end(), [&mol](const int bi) {
+             auto bond = mol.getBondWithIdx(bi);
+             return !(bond->getIsAromatic() ||
+                      bond->getBondType() == Bond::BondType::AROMATIC);
+           });
   };
   std::copy_if(allbrings.begin(), allbrings.end(), std::back_inserter(brings),
                copyBondRingsWithinFragment);
+
+  // if we didn't copy over all the bond rings, then the atom and bond rings are
+  // out of sync, fix that.
+  if (brings.size() != allbrings.size()) {
+    VECT_INT_VECT tarings;
+    for (const auto &bring : brings) {
+      boost::dynamic_bitset<> seen(mol.getNumAtoms());
+      for (auto bi : bring) {
+        auto bnd = mol.getBondWithIdx(bi);
+        seen.set(bnd->getBeginAtomIdx());
+        seen.set(bnd->getEndAtomIdx());
+      }
+      for (const auto &aring : arings) {
+        bool allThere = true;
+        for (const auto ai : aring) {
+          if (!seen[ai]) {
+            allThere = false;
+            break;
+          }
+        }
+        if (allThere) {
+          tarings.push_back(aring);
+        }
+      }
+    }
+    arings = tarings;
+  }
 
   // make a neighbor map for the rings i.e. a ring is a
   // neighbor to another candidate ring if it shares at least
