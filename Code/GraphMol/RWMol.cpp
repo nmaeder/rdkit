@@ -184,6 +184,19 @@ void RWMol::replaceBond(unsigned int idx, Bond *bond_pin, bool preserveProps,
   bond_p->setIdx(idx);
   bond_p->setBeginAtomIdx(obond->getBeginAtomIdx());
   bond_p->setEndAtomIdx(obond->getEndAtomIdx());
+
+  // Update explicit Hs, if set, on both ends. This was github #7128
+  auto orderDifference =
+      bond_p->getBondTypeAsDouble() - obond->getBondTypeAsDouble();
+  if (orderDifference > 0) {
+    for (auto atom : {bond_p->getBeginAtom(), bond_p->getEndAtom()}) {
+      if (auto explicit_hs = atom->getNumExplicitHs(); explicit_hs > 0) {
+        auto new_hs = static_cast<int>(explicit_hs - orderDifference);
+        atom->setNumExplicitHs(std::max(new_hs, 0));
+      }
+    }
+  }
+
   if (preserveProps) {
     const bool replaceExistingData = false;
     bond_p->updateProps(*d_graph[*(bIter.first)], replaceExistingData);
@@ -358,8 +371,8 @@ void RWMol::removeAtom(Atom *atom) {
 
   removeSubstanceGroupsReferencingAtom(*this, idx);
 
-  // Remove any stereo group which includes the atom being deleted
-  removeGroupsWithAtom(atom, d_stereo_groups);
+  // Remove this atom from any stereo group
+  removeAtomFromGroups(atom, d_stereo_groups);
 
   // clear computed properties and reset our ring info structure
   // they are pretty likely to be wrong now:
@@ -474,8 +487,8 @@ void RWMol::removeBond(unsigned int aid1, unsigned int aid2) {
       // github #6900 if we remove stereo atoms we need to remove
       //  the CIS and or TRANS since this requires stereo atoms
       if (obnd->getStereo() == Bond::BondStereo::STEREOCIS ||
-          obnd->getStereo() == Bond::BondStereo::STEREOTRANS ) {
-          obnd->setStereo(Bond::BondStereo::STEREONONE);
+          obnd->getStereo() == Bond::BondStereo::STEREOTRANS) {
+        obnd->setStereo(Bond::BondStereo::STEREONONE);
       }
       obnd->getStereoAtoms().clear();
     }
@@ -496,7 +509,7 @@ void RWMol::removeBond(unsigned int aid1, unsigned int aid2) {
       // github #6900 if we remove stereo atoms we need to remove
       //  the CIS and or TRANS since this requires stereo atoms
       if (obnd->getStereo() == Bond::BondStereo::STEREOCIS ||
-        obnd->getStereo() == Bond::BondStereo::STEREOTRANS ) {
+          obnd->getStereo() == Bond::BondStereo::STEREOTRANS) {
         obnd->setStereo(Bond::BondStereo::STEREONONE);
       }
       obnd->getStereoAtoms().clear();

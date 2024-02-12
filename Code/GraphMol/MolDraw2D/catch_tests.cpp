@@ -47,12 +47,12 @@ namespace {
 // The hand-drawn pictures will fail this frequently due to the use
 // of random numbers to draw the lines.  As well as all the testHandDrawn
 // files, this includes testBrackets-5a.svg and testPositionVariation-1b.svg
-static const bool DELETE_WITH_GOOD_HASH = true;
+const bool DELETE_WITH_GOOD_HASH = true;
 // The expected hash code for a file may be included in these maps, or
 // provided in the call to check_file_hash().
 // These values are for a build with FreeType, so expect them all to be
 // wrong when building without.
-static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
+const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testAtomTags_1.svg", 3187798125U},
     {"testAtomTags_2.svg", 822910240U},
     {"testAtomTags_3.svg", 2244078420U},
@@ -63,7 +63,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"contourMol_5.svg", 2230414999U},
     {"testDativeBonds_1.svg", 2877255976U},
     {"testDativeBonds_2.svg", 2510476717U},
-    {"testDativeBonds_3.svg", 3256011686U},
+    {"testDativeBonds_3.svg", 1742381275U},
     {"testDativeBonds_2a.svg", 3936523099U},
     {"testDativeBonds_2b.svg", 1652957675U},
     {"testDativeBonds_2c.svg", 630355005U},
@@ -325,7 +325,8 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"bad_lasso_1.svg", 726527516U},
     {"AtropCanon1.svg", 1587179714U},
     {"AtropManyChiralsEnhanced.svg", 3871032500U},
-    {"testGithub6968.svg", 1554428830U}};
+    {"testGithub6968.svg", 1554428830U},
+    {"testGithub7036.svg", 2355702607U}};
 
 // These PNG hashes aren't completely reliable due to floating point cruft,
 // but they can still reduce the number of drawings that need visual
@@ -334,7 +335,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
 // give different results on my MBP and Ubuntu 20.04 VM.  The SVGs work
 // better because the floats are all output to only 1 decimal place so there
 // is a much smaller chance of different systems producing different files.
-static const std::map<std::string, std::hash_result_t> PNG_HASHES = {
+const std::map<std::string, std::hash_result_t> PNG_HASHES = {
     {"testGithub3226_1.png", 2350054896U},
     {"testGithub3226_2.png", 606206725U},
     {"testGithub3226_3.png", 2282880418U},
@@ -815,9 +816,9 @@ TEST_CASE("dative bonds", "[drawing][organometallics]") {
     std::regex d1(
         "<path class='bond-2 atom-3 atom-4' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)' style='fill:none;fill-rule:evenodd;stroke:#0000FF");
     auto dat1 = *std::sregex_iterator(text.begin(), text.end(), d1);
-    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(50.9, 0.1));
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(53.5, 0.1));
     CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(140.2, 0.1));
-    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(78.1, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(80.7, 0.1));
     CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(149.0, 0.1));
   }
   SECTION("dative series") {
@@ -8317,7 +8318,7 @@ TEST_CASE("Lasso highlights") {
     std::map<int, std::vector<DrawColour>> ha_map;
     std::map<int, std::vector<DrawColour>> hb_map;
 
-       for (size_t i = 0; i < smarts.size(); ++i) {
+    for (size_t i = 0; i < smarts.size(); ++i) {
       std::vector<int> hit_atoms = get_all_hit_atoms(*m, smarts[i]);
       update_colour_map(hit_atoms, colours[i], ha_map);
     }
@@ -9376,6 +9377,7 @@ TEST_CASE("atropisomers") {
     }
   }
 }
+
 TEST_CASE("Github6968 - bad bond highlights with triple bonds") {
   // The issue is that in the linear highlight across the triple bond,
   // some of the highlights didn't appear, and others were
@@ -9428,5 +9430,44 @@ TEST_CASE("Github6968 - bad bond highlights with triple bonds") {
       std::shuffle(atOrder.begin(), atOrder.end(),
                    std::mt19937{std::random_device{}()});
     }
+  }
+}
+
+TEST_CASE("Github7036 - triple bond to wedge not right") {
+  // The issue is that the middle line of a triple bond
+  // ends in the wrong place when the incident bond is
+  // a wedge.  Wedge to single bond included for visual
+  // check that that isn't broken in the fix.
+  auto m = "C1[C@@H](CN)CCN[C@H]1C#N"_smiles;
+  REQUIRE(m);
+  {
+    MolDraw2DSVG drawer(350, 300);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    drawer.drawMolecule(*m);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::ofstream outs("testGithub7036.svg");
+    outs << text;
+    outs.close();
+
+    std::regex bond(
+        "<path class='bond-8 atom-8 atom-9' d='M (-?\\d+.\\d+),(-?\\d+.\\d+)"
+        " L (-?\\d+.\\d+),(-?\\d+.\\d+)' style=");
+    // The problem is the first line in the bond, which comes in 2 parts
+    // that should be co-linear.
+    auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond);
+    std::smatch match = *match_begin;
+    std::vector<Point2D> pts;
+    pts.push_back(Point2D(stod(match[1]), stod(match[2])));
+    pts.push_back(Point2D(stod(match[3]), stod(match[4])));
+    ++match_begin;
+    match = *match_begin;
+    pts.push_back(Point2D(stod(match[1]), stod(match[2])));
+    pts.push_back(Point2D(stod(match[3]), stod(match[4])));
+    double dot = pts[0].directionVector(pts[1]).dotProduct(
+        pts[2].directionVector(pts[3]));
+    CHECK_THAT(fabs(dot), Catch::Matchers::WithinAbs(1.0, 0.001));
+    check_file_hash("testGithub7036.svg");
   }
 }
