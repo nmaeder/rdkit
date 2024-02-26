@@ -18,6 +18,8 @@
 #include <GraphMol/ROMol.h>
 #include <boost/shared_ptr.hpp>
 #include <DistGeom/BoundsMatrix.h>
+#include <GraphMol/ForceFieldHelpers/UFF/AtomTyper.h>
+#include <GraphMol/ForceFieldHelpers/MMFF/AtomTyper.h>
 
 namespace RDKit {
 namespace DGeomHelpers {
@@ -36,6 +38,8 @@ enum EmbedFailureCauses {
   CHECK_CHIRAL_CENTERS2 = 10,
   END_OF_ENUM = 11,
 };
+
+enum class EmbedFF { UFF, MMFF };
 
 //! Parameter object for controlling embedding
 /*!
@@ -151,6 +155,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   std::vector<unsigned int> failures;
   bool enableSequentialRandomSeeds{false};
   bool symmetrizeConjugatedTerminalGroupsForPruning{true};
+  EmbedFF embedForceField{EmbedFF::UFF};
 
   EmbedParameters() : boundsMat(nullptr), CPCI(nullptr), callback(nullptr) {}
   EmbedParameters(

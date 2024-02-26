@@ -11,6 +11,7 @@
 #include <GraphMol/Chirality.h>
 #include <DistGeom/BoundsMatrix.h>
 #include "BoundsMatrixBuilder.h"
+#include <GraphMol/DistGeomHelpers/Embedder.h>
 #include <GraphMol/ForceFieldHelpers/UFF/AtomTyper.h>
 #include <ForceField/UFF/BondStretch.h>
 #include <Geometry/Utils.h>
@@ -22,6 +23,7 @@
 #include <DistGeom/TriangleSmooth.h>
 #include <boost/dynamic_bitset.hpp>
 #include <algorithm>
+#include <utility>
 
 const double DIST12_DELTA = 0.01;
 // const double ANGLE_DELTA = 0.0837;
@@ -100,31 +102,32 @@ class ComputedData {
   \param mmat         Bounds matrix to which the bounds are written
   \param accumData    Used to store the data that have been calculated so far
                       about the molecule
-*/
-void set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
-                 ComputedData &accumData);
-
+// */
+template <typename checkFunc, typename calcFunc>
+auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                 ComputedData &accumData, checkFunc checkF, calcFunc calcF,
+                 bool isFallback) -> decltype(checkF(mol));
 //! Set 1-3 distance bounds for atoms in a molecule
 /*!
   These are computed using bond angles and bond lengths. There are special
-  cases here, in particular for 3, 4, and 5 membered rings. Special attention
-  is also paid to fused ring ring systems, when setting bounds on atoms that
-  have an atom between that is shared by multiple rings.
-  \param mol          Molecule of interest
-  \param mmat         Bounds matrix to which the bounds are written
-  \param accumData    Used to store the data that have been calculated so far
-                      about the molecule
-  <b>Procedure</b>
-  All 1-3 distances within all simple rings are first dealt with, while keeping
+  cases here, in particular for 3, 4, and 5 membered rings. Special
+  attention is also paid to fused ring ring systems, when setting bounds on
+  atoms that have an atom between that is shared by multiple rings. \param
+  mol          Molecule of interest \param mmat         Bounds matrix to
+  which the bounds are written \param accumData    Used to store the data
+  that have been calculated so far about the molecule <b>Procedure</b> All
+  1-3 distances within all simple rings are first dealt with, while keeping
   track of
   any atoms that are visited twice; these are the atoms that are part of
   multiple simple rings.
-  Then all other 1-3 distance are set while treating 1-3 atoms that have a ring
-  atom in
-  between differently from those that have a non-ring atom in between.
+  Then all other 1-3 distance are set while treating 1-3 atoms that have a
+  ring atom in between differently from those that have a non-ring atom in
+  between.
  */
 void set13Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                  ComputedData &accumData);
+void set13Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                 ComputedData &accumData, MMFF::MMFFMolProperties &mmffProp);
 
 //! Set 1-4 distance bounds for atoms in a molecule
 /*!
@@ -203,16 +206,52 @@ void _checkAndSetBounds(unsigned int i, unsigned int j, double lb, double ub,
   }
 }
 
-void set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
-                 ComputedData &accumData) {
+std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
+  auto [p, s] = UFF::getAtomTypes(mol);
+  CHECK_INVARIANT(p.size() == mol.getNumAtoms(),
+                  "parameter vector size mismatch");
+  return std::make_pair(s, p);
+}
+
+std::pair<bool, MMFF::MMFFMolProperties> check12MMFF(const ROMol &mol) {
+  ROMol molCopy(mol);
+  auto p = MMFF::MMFFMolProperties(molCopy);
+  return std::make_pair(p.isValid(), p);
+}
+
+double calc12UFFBounds(const ROMol &mol, Bond *const bond,
+                       UFF::AtomicParamVect params, unsigned int begId,
+                       unsigned int endId) {
+  auto bOrder = bond->getBondTypeAsDouble();
+  if (params[begId] && params[endId] && bOrder > 0) {
+    return ForceFields::UFF::Utils::calcBondRestLength(bOrder, params[begId],
+                                                       params[endId]);
+  }
+  return double(-1000);
+}
+
+double calc12MMFFBounds(const ROMol &mol, Bond *const bond,
+                        MMFF::MMFFMolProperties params, unsigned int begId,
+                        unsigned int endId) {
+  unsigned int bOrder = bond->getBondType();
+  MMFF::MMFFBond bProp;
+  auto bValid =
+      params.getMMFFBondStretchParams(mol, begId, endId, bOrder, bProp);
+  return (bValid) ? bProp.r0 : double(-1000);
+}
+
+template <typename checkFunc, typename calcFunc>
+auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                 ComputedData &accumData, checkFunc checkF, calcFunc calcF,
+                 bool isFallback) -> decltype(checkF(mol)) {
   unsigned int npt = mmat->numRows();
   CHECK_INVARIANT(npt == mol.getNumAtoms(), "Wrong size metric matrix");
   CHECK_INVARIANT(accumData.bondLengths.size() >= mol.getNumBonds(),
                   "Wrong size accumData");
-  auto [atomParams, foundAll] = UFF::getAtomTypes(mol);
-  CHECK_INVARIANT(atomParams.size() == mol.getNumAtoms(),
-                  "parameter vector size mismatch");
-
+  auto [successfull, params] = checkF(mol);
+  if (!successfull) {
+    return std::make_pair(false, params);
+  }
   boost::dynamic_bitset<> squishAtoms(mol.getNumAtoms());
   // find larger heteroatoms in conjugated 5 rings, because we need to add a bit
   // of extra flex for them
@@ -230,32 +269,46 @@ void set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   for (const auto bond : mol.bonds()) {
     auto begId = bond->getBeginAtomIdx();
     auto endId = bond->getEndAtomIdx();
-    auto bOrder = bond->getBondTypeAsDouble();
-    if (atomParams[begId] && atomParams[endId] && bOrder > 0) {
-      auto bl = ForceFields::UFF::Utils::calcBondRestLength(
-          bOrder, atomParams[begId], atomParams[endId]);
-
+    auto bl = calcF(mol, bond, params, begId, endId);
+    if (bl != double(-1000)) {
       double extraSquish = 0.0;
       if (squishAtoms[begId] || squishAtoms[endId]) {
         extraSquish = 0.2;  // empirical
+        // std::cerr << "Extra squish for (" << begId << ", " << endId << ")"
+        // << std::endl;
       }
-
+      auto upper = bl + extraSquish + DIST12_DELTA;
+      auto lower = bl - extraSquish - DIST12_DELTA;
+      if (upper < lower) {
+        std::cout << "upper: " << upper << " lower: " << lower << " bl: " << bl
+                  << std::endl;
+      }
       accumData.bondLengths[bond->getIdx()] = bl;
       mmat->setUpperBound(begId, endId, bl + extraSquish + DIST12_DELTA);
       mmat->setLowerBound(begId, endId, bl - extraSquish - DIST12_DELTA);
-    } else {
+    } else if (isFallback) {
       // we don't have parameters for one of the atoms... so we're forced to
       // use very crude bounds:
       auto vw1 = PeriodicTable::getTable()->getRvdw(
           mol.getAtomWithIdx(begId)->getAtomicNum());
       auto vw2 = PeriodicTable::getTable()->getRvdw(
           mol.getAtomWithIdx(endId)->getAtomicNum());
-      auto bl = (vw1 + vw2) / 2;
-      accumData.bondLengths[bond->getIdx()] = bl;
-      mmat->setUpperBound(begId, endId, 1.5 * bl);
-      mmat->setLowerBound(begId, endId, .5 * bl);
+      auto blfb = (vw1 + vw2) / 2;
+      auto upper = blfb * 1.5;
+      auto lower = blfb * .5;
+      if (upper < lower) {
+        std::cout << "in fallbackupper: " << upper << " lower: " << lower
+                  << " bl: " << blfb << std::endl;
+      }
+      accumData.bondLengths[bond->getIdx()] = blfb;
+      mmat->setUpperBound(begId, endId, 1.5 * blfb);
+      mmat->setLowerBound(begId, endId, .5 * blfb);
+    } else {
+      std::cout << "we shouldnt be here" << std::endl;
+      return std::make_pair(false, params);
     }
   }
+  return std::make_pair(true, params);
 }
 
 void setLowerBoundVDW(const ROMol &mol, DistGeom::BoundsMatPtr mmat, bool,
@@ -565,6 +618,65 @@ void set13Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
     }    // done with non-ring atoms
   }      // done with all atoms
 }  // done with 13 distance setting
+
+void set13Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                 ComputedData &accumData, MMFF::MMFFMolProperties &mmffProp) {
+  auto npt = mmat->numRows();
+  CHECK_INVARIANT(npt == mol.getNumAtoms(), "Wrong size metric matrix");
+  CHECK_INVARIANT(accumData.bondAngles->numRows() == mol.getNumBonds(),
+                  "Wrong size bond angle matrix");
+  CHECK_INVARIANT(accumData.bondAdj->numRows() == mol.getNumBonds(),
+                  "Wrong size bond adjacency matrix");
+
+  // loop over all bonds
+  for (const auto bondi : mol.bonds()) {
+    unsigned int aid2, aid1, aid3;
+    auto bid1 = bondi->getIdx();
+    for (unsigned int j = bondi->getIdx() + 1; j < mol.getNumBonds(); ++j) {
+      const auto bondj = mol.getBondWithIdx(j);
+      auto bid2 = bondj->getIdx();
+      int aid11 = bondi->getBeginAtomIdx();
+      int aid12 = bondi->getEndAtomIdx();
+      int aid21 = bondj->getBeginAtomIdx();
+      int aid22 = bondj->getEndAtomIdx();
+      if (aid11 != aid21 && aid11 != aid22 && aid12 != aid21 &&
+          aid12 != aid22) {
+        continue;
+      }
+      if (aid12 == aid21) {
+        aid1 = aid11;
+        aid2 = aid12;
+        aid3 = aid22;
+      } else if (aid12 == aid22) {
+        aid1 = aid11;
+        aid2 = aid12;
+        aid3 = aid21;
+      } else if (aid11 == aid21) {
+        aid1 = aid12;
+        aid2 = aid11;
+        aid3 = aid22;
+      } else {
+        aid1 = aid12;
+        aid2 = aid11;
+        aid3 = aid21;
+      }
+      unsigned int angleType;
+      MMFF::MMFFAngle aProp;
+      bool aValid = mmffProp.getMMFFAngleBendParams(mol, aid1, aid2, aid3,
+                                                    angleType, aProp);
+      if (!aValid) {
+        BOOST_LOG(rdWarningLog)
+            << "Bounds matrix builder: Invalid MMFF angle parameters for ("
+            << aid1 << ", " << aid2 << ", " << aid3 << ")" << std::endl;
+      }
+      auto angle = aProp.theta0 * M_PI / 180;  // theta0 is in degrees
+      _set13BoundsHelper(aid1, aid2, aid3, angle, accumData, mmat, mol);
+      accumData.bondAngles->setVal(bid1, bid2, angle);
+      accumData.bondAdj->setVal(bid1, bid2, aid2);
+    }
+  }
+
+}  // done with 13 distance setting (MMFF)
 
 Bond::BondStereo _getAtomStereo(const Bond *bnd, unsigned int aid1,
                                 unsigned int aid4) {
@@ -1706,9 +1818,30 @@ void initBoundsMat(DistGeom::BoundsMatPtr mmat, double defaultMin,
   initBoundsMat(mmat.get(), defaultMin, defaultMax);
 };
 
+template <typename checkFunc, typename calcFunc>
+bool setNonFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                        ComputedData &accumData, checkFunc checkF,
+                        calcFunc calcF) {
+  std::cout << "We in shouldn't be here!" << std::endl;
+  auto [success, params] =
+      set12Bounds(mol, mmat, accumData, checkF, calcF, false);
+  if (!success) {
+    return false;
+  }
+  set13Bounds(mol, mmat, accumData, params);
+  return true;
+}
+
+void setFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                     ComputedData &accumData) {
+  set12Bounds(mol, mmat, accumData, check12UFF, calc12UFFBounds, true);
+  set13Bounds(mol, mmat, accumData);
+}
+
 void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                     bool set15bounds, bool scaleVDW, bool useMacrocycle14config,
-                    bool forceTransAmides) {
+                    bool forceTransAmides,
+                    DGeomHelpers::EmbedFF embedForceField) {
   PRECONDITION(mmat.get(), "bad pointer");
   unsigned int nb = mol.getNumBonds();
   unsigned int na = mol.getNumAtoms();
@@ -1719,8 +1852,14 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   double *distMatrix = nullptr;
   distMatrix = MolOps::getDistanceMat(mol);
 
-  set12Bounds(mol, mmat, accumData);
-  set13Bounds(mol, mmat, accumData);
+  bool embeddSuccesfull = false;
+  if (embedForceField == DGeomHelpers::EmbedFF::MMFF) {
+    embeddSuccesfull =
+        setNonFallback1213(mol, mmat, accumData, check12MMFF, calc12MMFFBounds);
+  }
+  if (!embeddSuccesfull) {
+    setFallback1213(mol, mmat, accumData);
+  }
 
   set14Bounds(mol, mmat, accumData, distMatrix, useMacrocycle14config,
               forceTransAmides);
@@ -1784,7 +1923,8 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                     std::vector<std::pair<int, int>> &bonds,
                     std::vector<std::vector<int>> &angles, bool set15bounds,
                     bool scaleVDW, bool useMacrocycle14config,
-                    bool forceTransAmides) {
+                    bool forceTransAmides,
+                    DGeomHelpers::EmbedFF embedForceField) {
   PRECONDITION(mmat.get(), "bad pointer");
   bonds.clear();
   angles.clear();
@@ -1797,8 +1937,15 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   double *distMatrix = nullptr;
   distMatrix = MolOps::getDistanceMat(mol);
 
-  set12Bounds(mol, mmat, accumData);
-  set13Bounds(mol, mmat, accumData);
+  bool embeddSuccesfull = false;
+  if (embedForceField == DGeomHelpers::EmbedFF::MMFF) {
+    embeddSuccesfull =
+        setNonFallback1213(mol, mmat, accumData, check12MMFF, calc12MMFFBounds);
+  }
+  if (!embeddSuccesfull) {
+    setFallback1213(mol, mmat, accumData);
+  }
+
   set14Bounds(mol, mmat, accumData, distMatrix, useMacrocycle14config,
               forceTransAmides);
 
