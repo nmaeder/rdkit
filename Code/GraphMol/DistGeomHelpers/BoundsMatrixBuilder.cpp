@@ -210,6 +210,7 @@ std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
   auto [p, s] = UFF::getAtomTypes(mol);
   CHECK_INVARIANT(p.size() == mol.getNumAtoms(),
                   "parameter vector size mismatch");
+  std::cout << "we are in uff check func and are s:" << s << std::endl;
   return std::make_pair(s, p);
 }
 
@@ -223,7 +224,10 @@ double calc12UFFBounds(const ROMol &mol, Bond *const bond,
                        UFF::AtomicParamVect params, unsigned int begId,
                        unsigned int endId) {
   auto bOrder = bond->getBondTypeAsDouble();
+  std::cout << "we are in the calc function and our border is " << bOrder
+            << std::endl;
   if (params[begId] && params[endId] && bOrder > 0) {
+    std::cout << "We passed the if and calculate with ff!" << std::endl;
     return ForceFields::UFF::Utils::calcBondRestLength(bOrder, params[begId],
                                                        params[endId]);
   }
@@ -248,10 +252,13 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   CHECK_INVARIANT(npt == mol.getNumAtoms(), "Wrong size metric matrix");
   CHECK_INVARIANT(accumData.bondLengths.size() >= mol.getNumBonds(),
                   "Wrong size accumData");
-  auto [successfull, params] = checkF(mol);
-  if (!successfull) {
+  std::cout << "we are before check" << std::endl;
+  auto [successful, params] = checkF(mol);
+  if (!successful) {
     return std::make_pair(false, params);
   }
+  std::cout << "we are after check and are successful: " << successful
+            << std::endl;
   boost::dynamic_bitset<> squishAtoms(mol.getNumAtoms());
   // find larger heteroatoms in conjugated 5 rings, because we need to add a bit
   // of extra flex for them
@@ -270,7 +277,9 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
     auto begId = bond->getBeginAtomIdx();
     auto endId = bond->getEndAtomIdx();
     auto bl = calcF(mol, bond, params, begId, endId);
+    std::cout << "after calcf with a bl of " << bl << std::endl;
     if (bl != double(-1000)) {
+      std::cout << "in the correct if" << std::endl;
       double extraSquish = 0.0;
       if (squishAtoms[begId] || squishAtoms[endId]) {
         extraSquish = 0.2;  // empirical
@@ -279,8 +288,11 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
       }
       auto upper = bl + extraSquish + DIST12_DELTA;
       auto lower = bl - extraSquish - DIST12_DELTA;
+      std::cout << "upper limit " << upper << std::endl;
+      std::cout << "lower limit " << lower << std::endl;
       if (upper < lower) {
         std::cout << "upper: " << upper << " lower: " << lower << " bl: " << bl
+                  << "\n\n"
                   << std::endl;
       }
       accumData.bondLengths[bond->getIdx()] = bl;
@@ -1834,6 +1846,7 @@ bool setNonFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
 
 void setFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                      ComputedData &accumData) {
+  std::cout << "we are in the correct function" << std::endl;
   set12Bounds(mol, mmat, accumData, check12UFF, calc12UFFBounds, true);
   set13Bounds(mol, mmat, accumData);
 }
