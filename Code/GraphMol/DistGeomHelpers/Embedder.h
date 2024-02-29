@@ -39,6 +39,10 @@ enum EmbedFailureCauses {
   END_OF_ENUM = 11,
 };
 
+/**
+ * Force Field types available for setting 12 and 13 bounds in DG.
+ * Currently, UFF and MMFF are supported.
+ */
 enum class EmbedFF { UFF, MMFF };
 
 //! Parameter object for controlling embedding

@@ -209,6 +209,11 @@ void _checkAndSetBounds(unsigned int i, unsigned int j, double lb, double ub,
 }
 
 namespace Details {
+/** Get UFF Atom Type Parameters.
+ *
+ * @param mol Molecule to parametrize
+ * @return pair of bool (whether parametrization was successful) and the atom params.
+ */
 std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
   auto [p, s] = UFF::getAtomTypes(mol);
   CHECK_INVARIANT(p.size() == mol.getNumAtoms(),
@@ -216,12 +221,26 @@ std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
   return std::make_pair(s, p);
 }
 
+/** Get MMFF Atom Type Parameters.
+ *
+ * @param mol Molecule to parametrize
+ * @return pair of bool (whether parametrization was successful) and the atom params.
+ */
 std::pair<bool, MMFF::MMFFMolProperties> check12MMFF(const ROMol &mol) {
   ROMol molCopy(mol);
   auto p = MMFF::MMFFMolProperties(molCopy);
   return std::make_pair(p.isValid(), p);
 }
 
+/** Calculate bond UFF bond length, return -1000 if not possible.
+ *
+ * @param mol Owning molecule of bond
+ * @param bond Bond to get length for
+ * @param params UFF Atom Type Parameters for mol
+ * @param begId Idx of first bond atom in mol
+ * @param endId Idx of second bond atom in mol
+ * @return length of bond if possible, else -1000.
+ */
 double calc12UFFBounds(const ROMol &mol, Bond *const bond,
                        UFF::AtomicParamVect params, unsigned int begId,
                        unsigned int endId) {
@@ -232,6 +251,15 @@ double calc12UFFBounds(const ROMol &mol, Bond *const bond,
              : double(-1000);
 }
 
+/** Calculate bond MMFF bond length, return -1000 if not possible.
+ *
+ * @param mol Owning molecule of bond
+ * @param bond Bond to get length for
+ * @param params MMFF Atom Type Parameters for mol
+ * @param begId Idx of first bond atom in mol
+ * @param endId Idx of second bond atom in mol
+ * @return length of bond if possible, else -1000.
+ */
 double calc12MMFFBounds(const ROMol &mol, Bond *const bond,
                         MMFF::MMFFMolProperties params, unsigned int begId,
                         unsigned int endId) {
