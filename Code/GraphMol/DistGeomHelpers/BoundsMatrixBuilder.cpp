@@ -11,8 +11,10 @@
 #include <GraphMol/Chirality.h>
 #include <DistGeom/BoundsMatrix.h>
 #include "BoundsMatrixBuilder.h"
+#include "BoundsMatrixBuilderDetails.h"
 #include <GraphMol/DistGeomHelpers/Embedder.h>
 #include <GraphMol/ForceFieldHelpers/UFF/AtomTyper.h>
+#include <GraphMol/ForceFieldHelpers/MMFF/AtomTyper.h>
 #include <ForceField/UFF/BondStretch.h>
 #include <Geometry/Utils.h>
 
@@ -206,11 +208,11 @@ void _checkAndSetBounds(unsigned int i, unsigned int j, double lb, double ub,
   }
 }
 
+namespace Details {
 std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
   auto [p, s] = UFF::getAtomTypes(mol);
   CHECK_INVARIANT(p.size() == mol.getNumAtoms(),
                   "parameter vector size mismatch");
-  std::cout << "we are in uff check func and are s:" << s << std::endl;
   return std::make_pair(s, p);
 }
 
@@ -224,14 +226,10 @@ double calc12UFFBounds(const ROMol &mol, Bond *const bond,
                        UFF::AtomicParamVect params, unsigned int begId,
                        unsigned int endId) {
   auto bOrder = bond->getBondTypeAsDouble();
-  std::cout << "we are in the calc function and our border is " << bOrder
-            << std::endl;
-  if (params[begId] && params[endId] && bOrder > 0) {
-    std::cout << "We passed the if and calculate with ff!" << std::endl;
-    return ForceFields::UFF::Utils::calcBondRestLength(bOrder, params[begId],
-                                                       params[endId]);
-  }
-  return double(-1000);
+  return (params[begId] && params[endId] && bOrder > 0)
+             ? ForceFields::UFF::Utils::calcBondRestLength(
+                   bOrder, params[begId], params[endId])
+             : double(-1000);
 }
 
 double calc12MMFFBounds(const ROMol &mol, Bond *const bond,
@@ -243,6 +241,7 @@ double calc12MMFFBounds(const ROMol &mol, Bond *const bond,
       params.getMMFFBondStretchParams(mol, begId, endId, bOrder, bProp);
   return (bValid) ? bProp.r0 : double(-1000);
 }
+}  // namespace Details
 
 template <typename checkFunc, typename calcFunc>
 auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
@@ -252,13 +251,10 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   CHECK_INVARIANT(npt == mol.getNumAtoms(), "Wrong size metric matrix");
   CHECK_INVARIANT(accumData.bondLengths.size() >= mol.getNumBonds(),
                   "Wrong size accumData");
-  std::cout << "we are before check" << std::endl;
   auto [successful, params] = checkF(mol);
-  if (!successful) {
+  if (!isFallback && !successful) {
     return std::make_pair(false, params);
   }
-  std::cout << "we are after check and are successful: " << successful
-            << std::endl;
   boost::dynamic_bitset<> squishAtoms(mol.getNumAtoms());
   // find larger heteroatoms in conjugated 5 rings, because we need to add a bit
   // of extra flex for them
@@ -277,23 +273,12 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
     auto begId = bond->getBeginAtomIdx();
     auto endId = bond->getEndAtomIdx();
     auto bl = calcF(mol, bond, params, begId, endId);
-    std::cout << "after calcf with a bl of " << bl << std::endl;
     if (bl != double(-1000)) {
-      std::cout << "in the correct if" << std::endl;
       double extraSquish = 0.0;
       if (squishAtoms[begId] || squishAtoms[endId]) {
         extraSquish = 0.2;  // empirical
         // std::cerr << "Extra squish for (" << begId << ", " << endId << ")"
         // << std::endl;
-      }
-      auto upper = bl + extraSquish + DIST12_DELTA;
-      auto lower = bl - extraSquish - DIST12_DELTA;
-      std::cout << "upper limit " << upper << std::endl;
-      std::cout << "lower limit " << lower << std::endl;
-      if (upper < lower) {
-        std::cout << "upper: " << upper << " lower: " << lower << " bl: " << bl
-                  << "\n\n"
-                  << std::endl;
       }
       accumData.bondLengths[bond->getIdx()] = bl;
       mmat->setUpperBound(begId, endId, bl + extraSquish + DIST12_DELTA);
@@ -305,18 +290,11 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
           mol.getAtomWithIdx(begId)->getAtomicNum());
       auto vw2 = PeriodicTable::getTable()->getRvdw(
           mol.getAtomWithIdx(endId)->getAtomicNum());
-      auto blfb = (vw1 + vw2) / 2;
-      auto upper = blfb * 1.5;
-      auto lower = blfb * .5;
-      if (upper < lower) {
-        std::cout << "in fallbackupper: " << upper << " lower: " << lower
-                  << " bl: " << blfb << std::endl;
-      }
-      accumData.bondLengths[bond->getIdx()] = blfb;
-      mmat->setUpperBound(begId, endId, 1.5 * blfb);
-      mmat->setLowerBound(begId, endId, .5 * blfb);
+      auto bl = (vw1 + vw2) / 2;
+      accumData.bondLengths[bond->getIdx()] = bl;
+      mmat->setUpperBound(begId, endId, 1.5 * bl);
+      mmat->setLowerBound(begId, endId, .5 * bl);
     } else {
-      std::cout << "we shouldnt be here" << std::endl;
       return std::make_pair(false, params);
     }
   }
@@ -1830,11 +1808,11 @@ void initBoundsMat(DistGeom::BoundsMatPtr mmat, double defaultMin,
   initBoundsMat(mmat.get(), defaultMin, defaultMax);
 };
 
+namespace Details {
 template <typename checkFunc, typename calcFunc>
 bool setNonFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                         ComputedData &accumData, checkFunc checkF,
                         calcFunc calcF) {
-  std::cout << "We in shouldn't be here!" << std::endl;
   auto [success, params] =
       set12Bounds(mol, mmat, accumData, checkF, calcF, false);
   if (!success) {
@@ -1846,15 +1824,14 @@ bool setNonFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
 
 void setFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                      ComputedData &accumData) {
-  std::cout << "we are in the correct function" << std::endl;
   set12Bounds(mol, mmat, accumData, check12UFF, calc12UFFBounds, true);
   set13Bounds(mol, mmat, accumData);
 }
+}  // namespace Details
 
 void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                     bool set15bounds, bool scaleVDW, bool useMacrocycle14config,
-                    bool forceTransAmides,
-                    DGeomHelpers::EmbedFF embedForceField) {
+                    bool forceTransAmides, EmbedFF embedForceField) {
   PRECONDITION(mmat.get(), "bad pointer");
   unsigned int nb = mol.getNumBonds();
   unsigned int na = mol.getNumAtoms();
@@ -1866,12 +1843,12 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   distMatrix = MolOps::getDistanceMat(mol);
 
   bool embeddSuccesfull = false;
-  if (embedForceField == DGeomHelpers::EmbedFF::MMFF) {
-    embeddSuccesfull =
-        setNonFallback1213(mol, mmat, accumData, check12MMFF, calc12MMFFBounds);
+  if (embedForceField == EmbedFF::MMFF) {
+    embeddSuccesfull = Details::setNonFallback1213(
+        mol, mmat, accumData, Details::check12MMFF, Details::calc12MMFFBounds);
   }
   if (!embeddSuccesfull) {
-    setFallback1213(mol, mmat, accumData);
+    Details::setFallback1213(mol, mmat, accumData);
   }
 
   set14Bounds(mol, mmat, accumData, distMatrix, useMacrocycle14config,
@@ -1936,8 +1913,7 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                     std::vector<std::pair<int, int>> &bonds,
                     std::vector<std::vector<int>> &angles, bool set15bounds,
                     bool scaleVDW, bool useMacrocycle14config,
-                    bool forceTransAmides,
-                    DGeomHelpers::EmbedFF embedForceField) {
+                    bool forceTransAmides, EmbedFF embedForceField) {
   PRECONDITION(mmat.get(), "bad pointer");
   bonds.clear();
   angles.clear();
@@ -1951,12 +1927,12 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   distMatrix = MolOps::getDistanceMat(mol);
 
   bool embeddSuccesfull = false;
-  if (embedForceField == DGeomHelpers::EmbedFF::MMFF) {
-    embeddSuccesfull =
-        setNonFallback1213(mol, mmat, accumData, check12MMFF, calc12MMFFBounds);
+  if (embedForceField == EmbedFF::MMFF) {
+    embeddSuccesfull = Details::setNonFallback1213(
+        mol, mmat, accumData, Details::check12MMFF, Details::calc12MMFFBounds);
   }
   if (!embeddSuccesfull) {
-    setFallback1213(mol, mmat, accumData);
+    Details::setFallback1213(mol, mmat, accumData);
   }
 
   set14Bounds(mol, mmat, accumData, distMatrix, useMacrocycle14config,
