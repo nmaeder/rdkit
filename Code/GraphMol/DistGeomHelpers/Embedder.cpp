@@ -87,178 +87,184 @@ namespace RDKit {
 namespace DGeomHelpers {
 
 //! Parameters corresponding to Sereina Riniker's KDG approach
-const EmbedParameters KDG(0,        // maxIterations
-                          1,        // numThreads
-                          -1,       // randomSeed
-                          true,     // clearConfs
-                          false,    // useRandomCoords
-                          2.0,      // boxSizeMult
-                          true,     // randNegEig
-                          1,        // numZeroFail
-                          nullptr,  // coordMap
-                          1e-3,     // optimizerForceTol
-                          false,    // ignoreSmoothingFailures
-                          true,     // enforceChirality
-                          false,    // useExpTorsionAnglePrefs
-                          true,     // useBasicKnowledge
-                          false,    // verbose
-                          5.0,      // basinThresh
-                          -1.0,     // pruneRmsThresh
-                          true,     // onlyHeavyAtomsForRMS
-                          1,        // ETversion
-                          nullptr,  // boundsMat
-                          true,     // embedFragmentsSeparately
-                          false,    // useSmallRingTorsions
-                          false,    // useMacrocycleTorsions
-                          false,    // useMacrocycle14config
-                          nullptr,  // CPCI
-                          nullptr   // callback
+const EmbedParameters KDG(0,             // maxIterations
+                          1,             // numThreads
+                          -1,            // randomSeed
+                          true,          // clearConfs
+                          false,         // useRandomCoords
+                          2.0,           // boxSizeMult
+                          true,          // randNegEig
+                          1,             // numZeroFail
+                          nullptr,       // coordMap
+                          1e-3,          // optimizerForceTol
+                          false,         // ignoreSmoothingFailures
+                          true,          // enforceChirality
+                          false,         // useExpTorsionAnglePrefs
+                          true,          // useBasicKnowledge
+                          false,         // verbose
+                          5.0,           // basinThresh
+                          -1.0,          // pruneRmsThresh
+                          true,          // onlyHeavyAtomsForRMS
+                          1,             // ETversion
+                          nullptr,       // boundsMat
+                          true,          // embedFragmentsSeparately
+                          false,         // useSmallRingTorsions
+                          false,         // useMacrocycleTorsions
+                          false,         // useMacrocycle14config
+                          EmbedFF::UFF,  // embedForceField
+                          nullptr,       // CPCI
+                          nullptr        // callback
 );
 
 //! Parameters corresponding to Sereina Riniker's ETDG approach
-const EmbedParameters ETDG(0,        // maxIterations
-                           1,        // numThreads
-                           -1,       // randomSeed
-                           true,     // clearConfs
-                           false,    // useRandomCoords
-                           2.0,      // boxSizeMult
-                           true,     // randNegEig
-                           1,        // numZeroFail
-                           nullptr,  // coordMap
-                           1e-3,     // optimizerForceTol
-                           false,    // ignoreSmoothingFailures
-                           false,    // enforceChirality
-                           true,     // useExpTorsionAnglePrefs
-                           false,    // useBasicKnowledge
-                           false,    // verbose
-                           5.0,      // basinThresh
-                           -1.0,     // pruneRmsThresh
-                           true,     // onlyHeavyAtomsForRMS
-                           1,        // ETversion
-                           nullptr,  // boundsMat
-                           true,     // embedFragmentsSeparately
-                           false,    // useSmallRingTorsions
-                           false,    // useMacrocycleTorsions
-                           false,    // useMacrocycle14config
-                           nullptr,  // CPCI
-                           nullptr   // callback
+const EmbedParameters ETDG(0,             // maxIterations
+                           1,             // numThreads
+                           -1,            // randomSeed
+                           true,          // clearConfs
+                           false,         // useRandomCoords
+                           2.0,           // boxSizeMult
+                           true,          // randNegEig
+                           1,             // numZeroFail
+                           nullptr,       // coordMap
+                           1e-3,          // optimizerForceTol
+                           false,         // ignoreSmoothingFailures
+                           false,         // enforceChirality
+                           true,          // useExpTorsionAnglePrefs
+                           false,         // useBasicKnowledge
+                           false,         // verbose
+                           5.0,           // basinThresh
+                           -1.0,          // pruneRmsThresh
+                           true,          // onlyHeavyAtomsForRMS
+                           1,             // ETversion
+                           nullptr,       // boundsMat
+                           true,          // embedFragmentsSeparately
+                           false,         // useSmallRingTorsions
+                           false,         // useMacrocycleTorsions
+                           false,         // useMacrocycle14config
+                           EmbedFF::UFF,  // embedForceField
+                           nullptr,       // CPCI
+                           nullptr        // callback
 );
 //! Parameters corresponding to Sereina Riniker's ETKDG approach
-const EmbedParameters ETKDG(0,        // maxIterations
-                            1,        // numThreads
-                            -1,       // randomSeed
-                            true,     // clearConfs
-                            false,    // useRandomCoords
-                            2.0,      // boxSizeMult
-                            true,     // randNegEig
-                            1,        // numZeroFail
-                            nullptr,  // coordMap
-                            1e-3,     // optimizerForceTol
-                            false,    // ignoreSmoothingFailures
-                            true,     // enforceChirality
-                            true,     // useExpTorsionAnglePrefs
-                            true,     // useBasicKnowledge
-                            false,    // verbose
-                            5.0,      // basinThresh
-                            -1.0,     // pruneRmsThresh
-                            true,     // onlyHeavyAtomsForRMS
-                            1,        // ETversion
-                            nullptr,  // boundsMat
-                            true,     // embedFragmentsSeparately
-                            false,    // useSmallRingTorsions
-                            false,    // useMacrocycleTorsions
-                            false,    // useMacrocycle14config
-                            nullptr,  // CPCI
-                            nullptr   // callback
+const EmbedParameters ETKDG(0,             // maxIterations
+                            1,             // numThreads
+                            -1,            // randomSeed
+                            true,          // clearConfs
+                            false,         // useRandomCoords
+                            2.0,           // boxSizeMult
+                            true,          // randNegEig
+                            1,             // numZeroFail
+                            nullptr,       // coordMap
+                            1e-3,          // optimizerForceTol
+                            false,         // ignoreSmoothingFailures
+                            true,          // enforceChirality
+                            true,          // useExpTorsionAnglePrefs
+                            true,          // useBasicKnowledge
+                            false,         // verbose
+                            5.0,           // basinThresh
+                            -1.0,          // pruneRmsThresh
+                            true,          // onlyHeavyAtomsForRMS
+                            1,             // ETversion
+                            nullptr,       // boundsMat
+                            true,          // embedFragmentsSeparately
+                            false,         // useSmallRingTorsions
+                            false,         // useMacrocycleTorsions
+                            false,         // useMacrocycle14config
+                            EmbedFF::UFF,  // embedForceField
+                            nullptr,       // CPCI
+                            nullptr        // callback
 );
 
 //! Parameters corresponding to Sereina Riniker's ETKDG approach - version 2
-const EmbedParameters ETKDGv2(0,        // maxIterations
-                              1,        // numThreads
-                              -1,       // randomSeed
-                              true,     // clearConfs
-                              false,    // useRandomCoords
-                              2.0,      // boxSizeMult
-                              true,     // randNegEig
-                              1,        // numZeroFail
-                              nullptr,  // coordMap
-                              1e-3,     // optimizerForceTol
-                              false,    // ignoreSmoothingFailures
-                              true,     // enforceChirality
-                              true,     // useExpTorsionAnglePrefs
-                              true,     // useBasicKnowledge
-                              false,    // verbose
-                              5.0,      // basinThresh
-                              -1.0,     // pruneRmsThresh
-                              true,     // onlyHeavyAtomsForRMS
-                              2,        // ETversion
-                              nullptr,  // boundsMat
-                              true,     // embedFragmentsSeparately
-                              false,    // useSmallRingTorsions
-                              false,    // useMacrocycleTorsions
-                              false,    // useMacrocycle14config
-                              nullptr,  // CPCI
-                              nullptr   // callback
+const EmbedParameters ETKDGv2(0,             // maxIterations
+                              1,             // numThreads
+                              -1,            // randomSeed
+                              true,          // clearConfs
+                              false,         // useRandomCoords
+                              2.0,           // boxSizeMult
+                              true,          // randNegEig
+                              1,             // numZeroFail
+                              nullptr,       // coordMap
+                              1e-3,          // optimizerForceTol
+                              false,         // ignoreSmoothingFailures
+                              true,          // enforceChirality
+                              true,          // useExpTorsionAnglePrefs
+                              true,          // useBasicKnowledge
+                              false,         // verbose
+                              5.0,           // basinThresh
+                              -1.0,          // pruneRmsThresh
+                              true,          // onlyHeavyAtomsForRMS
+                              2,             // ETversion
+                              nullptr,       // boundsMat
+                              true,          // embedFragmentsSeparately
+                              false,         // useSmallRingTorsions
+                              false,         // useMacrocycleTorsions
+                              false,         // useMacrocycle14config
+                              EmbedFF::UFF,  // embedForceField
+                              nullptr,       // CPCI
+                              nullptr        // callback
 );
 
 //! Parameters corresponding improved ETKDG by Wang, Witek, Landrum and Riniker
 //! (10.1021/acs.jcim.0c00025) - the macrocycle part
-const EmbedParameters ETKDGv3(0,        // maxIterations
-                              1,        // numThreads
-                              -1,       // randomSeed
-                              true,     // clearConfs
-                              false,    // useRandomCoords
-                              2.0,      // boxSizeMult
-                              true,     // randNegEig
-                              1,        // numZeroFail
-                              nullptr,  // coordMap
-                              1e-3,     // optimizerForceTol
-                              false,    // ignoreSmoothingFailures
-                              true,     // enforceChirality
-                              true,     // useExpTorsionAnglePrefs
-                              true,     // useBasicKnowledge
-                              false,    // verbose
-                              5.0,      // basinThresh
-                              -1.0,     // pruneRmsThresh
-                              true,     // onlyHeavyAtomsForRMS
-                              2,        // ETversion
-                              nullptr,  // boundsMat
-                              true,     // embedFragmentsSeparately
-                              false,    // useSmallRingTorsions
-                              true,     // useMacrocycleTorsions
-                              true,     // useMacrocycle14config
-                              nullptr,  // CPCI
-                              nullptr   // callback
+const EmbedParameters ETKDGv3(0,             // maxIterations
+                              1,             // numThreads
+                              -1,            // randomSeed
+                              true,          // clearConfs
+                              false,         // useRandomCoords
+                              2.0,           // boxSizeMult
+                              true,          // randNegEig
+                              1,             // numZeroFail
+                              nullptr,       // coordMap
+                              1e-3,          // optimizerForceTol
+                              false,         // ignoreSmoothingFailures
+                              true,          // enforceChirality
+                              true,          // useExpTorsionAnglePrefs
+                              true,          // useBasicKnowledge
+                              false,         // verbose
+                              5.0,           // basinThresh
+                              -1.0,          // pruneRmsThresh
+                              true,          // onlyHeavyAtomsForRMS
+                              2,             // ETversion
+                              nullptr,       // boundsMat
+                              true,          // embedFragmentsSeparately
+                              false,         // useSmallRingTorsions
+                              true,          // useMacrocycleTorsions
+                              true,          // useMacrocycle14config
+                              EmbedFF::UFF,  // embedForceField
+                              nullptr,       // CPCI
+                              nullptr        // callback
 );
 
 //! Parameters corresponding improved ETKDG by Wang, Witek, Landrum and Riniker
 //! (10.1021/acs.jcim.0c00025) - the small ring part
-const EmbedParameters srETKDGv3(0,        // maxIterations
-                                1,        // numThreads
-                                -1,       // randomSeed
-                                true,     // clearConfs
-                                false,    // useRandomCoords
-                                2.0,      // boxSizeMult
-                                true,     // randNegEig
-                                1,        // numZeroFail
-                                nullptr,  // coordMap
-                                1e-3,     // optimizerForceTol
-                                false,    // ignoreSmoothingFailures
-                                true,     // enforceChirality
-                                true,     // useExpTorsionAnglePrefs
-                                true,     // useBasicKnowledge
-                                false,    // verbose
-                                5.0,      // basinThresh
-                                -1.0,     // pruneRmsThresh
-                                true,     // onlyHeavyAtomsForRMS
-                                2,        // ETversion
-                                nullptr,  // boundsMat
-                                true,     // embedFragmentsSeparately
-                                true,     // useSmallRingTorsions
-                                false,    // useMacrocycleTorsions
-                                false,    // useMacrocycle14config
-                                nullptr,  // CPCI
-                                nullptr   // callback
+const EmbedParameters srETKDGv3(0,             // maxIterations
+                                1,             // numThreads
+                                -1,            // randomSeed
+                                true,          // clearConfs
+                                false,         // useRandomCoords
+                                2.0,           // boxSizeMult
+                                true,          // randNegEig
+                                1,             // numZeroFail
+                                nullptr,       // coordMap
+                                1e-3,          // optimizerForceTol
+                                false,         // ignoreSmoothingFailures
+                                true,          // enforceChirality
+                                true,          // useExpTorsionAnglePrefs
+                                true,          // useBasicKnowledge
+                                false,         // verbose
+                                5.0,           // basinThresh
+                                -1.0,          // pruneRmsThresh
+                                true,          // onlyHeavyAtomsForRMS
+                                2,             // ETversion
+                                nullptr,       // boundsMat
+                                true,          // embedFragmentsSeparately
+                                true,          // useSmallRingTorsions
+                                false,         // useMacrocycleTorsions
+                                false,         // useMacrocycle14config
+                                EmbedFF::UFF,  // embedForceField
+                                nullptr,       // CPCI
+                                nullptr        // callback
 );
 
 namespace detail {

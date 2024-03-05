@@ -111,6 +111,7 @@ enum class EmbedFF { UFF, MMFF };
                 sampling
   useMacrocycle14config  If 1-4 distances bound heuristics for
                 macrocycles is used
+  embedForceField force field to use for 1-2 and 1-3 distances
   CPCI	custom columbic interactions between atom pairs
   callback	      void pointer to a function for reporting progress,
                   will be called with the current iteration number.
@@ -174,6 +175,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
       const DistGeom::BoundsMatrix *boundsMat = nullptr,
       bool embedFragmentsSeparately = true, bool useSmallRingTorsions = false,
       bool useMacrocycleTorsions = false, bool useMacrocycle14config = false,
+      EmbedFF embedForceField = EmbedFF::UFF,
       std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           CPCI = nullptr,
       void (*callback)(unsigned int) = nullptr)
@@ -202,7 +204,8 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
         useMacrocycleTorsions(useMacrocycleTorsions),
         useMacrocycle14config(useMacrocycle14config),
         CPCI(std::move(CPCI)),
-        callback(callback) {}
+        callback(callback),
+        embedForceField(embedForceField) {}
 };
 
 //! update parameters from a JSON string
@@ -302,6 +305,7 @@ inline int EmbedMolecule(ROMol &mol, EmbedParameters &params) {
                                 conformer sampling
   \param useMacrocycle14config  If 1-4 distances bound heuristics for
   macrocycles is used
+  \param embedForceField  force field to use for 1-2 and 1-3 distances
 
   \return ID of the conformer added to the molecule, -1 if the emdedding failed
 */
@@ -316,14 +320,15 @@ inline int EmbedMolecule(
     bool useBasicKnowledge = false, bool verbose = false,
     double basinThresh = 5.0, bool onlyHeavyAtomsForRMS = false,
     unsigned int ETversion = 2, bool useSmallRingTorsions = false,
-    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true) {
+    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true,
+    EmbedFF embedForceField = EmbedFF::UFF) {
   EmbedParameters params(
       maxIterations, 1, seed, clearConfs, useRandomCoords, boxSizeMult,
       randNegEig, numZeroFail, coordMap, optimizerForceTol,
       ignoreSmoothingFailures, enforceChirality, useExpTorsionAnglePrefs,
       useBasicKnowledge, verbose, basinThresh, -1.0, onlyHeavyAtomsForRMS,
       ETversion, nullptr, true, useSmallRingTorsions, useMacrocycleTorsions,
-      useMacrocycle14config);
+      useMacrocycle14config, embedForceField);
   return EmbedMolecule(mol, params);
 };
 
@@ -397,6 +402,7 @@ inline int EmbedMolecule(
   \param ETversion	version of torsion preferences to use
   \param useSmallRingTorsions	optional torsions to improve small ring
                               conformer sampling
+  \param embedForceField  force field to use for 1-2 and 1-3 distances
   \param useMacrocycleTorsions	optional torsions to improve macrocycle
                                 conformer sampling
   \param useMacrocycle14config  If 1-4 distances bound heuristics for
@@ -415,14 +421,15 @@ inline void EmbedMultipleConfs(
     bool useBasicKnowledge = false, bool verbose = false,
     double basinThresh = 5.0, bool onlyHeavyAtomsForRMS = false,
     unsigned int ETversion = 2, bool useSmallRingTorsions = false,
-    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true) {
+    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true,
+    EmbedFF embedForceField = EmbedFF::UFF) {
   EmbedParameters params(
       maxIterations, numThreads, seed, clearConfs, useRandomCoords, boxSizeMult,
       randNegEig, numZeroFail, coordMap, optimizerForceTol,
       ignoreSmoothingFailures, enforceChirality, useExpTorsionAnglePrefs,
       useBasicKnowledge, verbose, basinThresh, pruneRmsThresh,
       onlyHeavyAtomsForRMS, ETversion, nullptr, true, useSmallRingTorsions,
-      useMacrocycleTorsions, useMacrocycle14config);
+      useMacrocycleTorsions, useMacrocycle14config, embedForceField);
   EmbedMultipleConfs(mol, res, numConfs, params);
 };
 //! \overload
@@ -437,14 +444,15 @@ inline INT_VECT EmbedMultipleConfs(
     bool useBasicKnowledge = false, bool verbose = false,
     double basinThresh = 5.0, bool onlyHeavyAtomsForRMS = false,
     unsigned int ETversion = 2, bool useSmallRingTorsions = false,
-    bool useMacrocycleTorsions = false, bool useMacrocycle14config = false) {
+    bool useMacrocycleTorsions = false, bool useMacrocycle14config = false,
+    EmbedFF embedForceField = EmbedFF::UFF) {
   EmbedParameters params(
       maxIterations, 1, seed, clearConfs, useRandomCoords, boxSizeMult,
       randNegEig, numZeroFail, coordMap, optimizerForceTol,
       ignoreSmoothingFailures, enforceChirality, useExpTorsionAnglePrefs,
       useBasicKnowledge, verbose, basinThresh, pruneRmsThresh,
       onlyHeavyAtomsForRMS, ETversion, nullptr, true, useSmallRingTorsions,
-      useMacrocycleTorsions, useMacrocycle14config);
+      useMacrocycleTorsions, useMacrocycle14config, embedForceField);
   INT_VECT res;
   EmbedMultipleConfs(mol, res, numConfs, params);
   return res;

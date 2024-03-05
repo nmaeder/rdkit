@@ -201,10 +201,10 @@ INT_VECT EmbedMultipleConfs2(ROMol &mol, unsigned int numConfs,
   return res;
 }
 
-PyObject *getMolBoundsMatrix(ROMol &mol, bool set15bounds = true,
-                             bool scaleVDW = false,
-                             bool doTriangleSmoothing = true,
-                             bool useMacrocycle14config = false) {
+PyObject *getMolBoundsMatrix(
+    ROMol &mol, bool set15bounds = true, bool scaleVDW = false,
+    bool doTriangleSmoothing = true, bool useMacrocycle14config = false,
+    DGeomHelpers::EmbedFF embedForceField = DGeomHelpers::EmbedFF::UFF) {
   unsigned int nats = mol.getNumAtoms();
   npy_intp dims[2];
   dims[0] = nats;
@@ -212,8 +212,10 @@ PyObject *getMolBoundsMatrix(ROMol &mol, bool set15bounds = true,
 
   DistGeom::BoundsMatPtr mat(new DistGeom::BoundsMatrix(nats));
   DGeomHelpers::initBoundsMat(mat);
+  auto forceTransAmides = true;
   DGeomHelpers::setTopolBounds(mol, mat, set15bounds, scaleVDW,
-                               useMacrocycle14config);
+                               useMacrocycle14config, forceTransAmides,
+                               embedForceField);
   if (doTriangleSmoothing) {
     DistGeom::triangleSmoothBounds(mat);
   }
@@ -302,6 +304,11 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
       "GetExperimentalTorsions", RDKit::getExpTorsHelperWithParams,
       (python::arg("mol"), python::arg("embedParams")),
       "returns information about the bonds corresponding to experimental torsions");
+
+  python::enum_<RDKit::DGeomHelpers::EmbedFF>("EmbedFF")
+      .value("UFF", RDKit::DGeomHelpers::EmbedFF::UFF)
+      .value("MMFF", RDKit::DGeomHelpers::EmbedFF::MMFF)
+      .export_values();
 
   std::string docString =
       "Use distance geometry to obtain initial \n\
@@ -532,6 +539,9 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
                      &PyEmbedParameters::useMacrocycle14config,
                      "use the 1-4 distance bounds from ETKDGv3")
       .def_readwrite(
+          "embedForceField", &PyEmbedParameters::embedForceField,
+          "Force Field to use for 1-2 and 1-3 bounds matrix generation.")
+      .def_readwrite(
           "boundsMatForceScaling", &PyEmbedParameters::boundsMatForceScaling,
           "scale the weights of the atom pair distance restraints relative to "
           "the other types of restraints")
@@ -616,7 +626,6 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
   python::def("KDG", RDKit::getKDG,
               "Returns an EmbedParameters object for the KDG method.",
               python::return_value_policy<python::manage_new_object>());
-
   docString =
       "Returns the distance bounds matrix for a molecule\n\
  \n\
@@ -632,10 +641,12 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
     the bounds matrix as a Numeric array with lower bounds in \n\
     the lower triangle and upper bounds in the upper triangle\n\
 \n";
-  python::def("GetMoleculeBoundsMatrix", RDKit::getMolBoundsMatrix,
-              (python::arg("mol"), python::arg("set15bounds") = true,
-               python::arg("scaleVDW") = false,
-               python::arg("doTriangleSmoothing") = true,
-               python::arg("useMacrocycle14config") = false),
-              docString.c_str());
+  python::def(
+      "GetMoleculeBoundsMatrix", RDKit::getMolBoundsMatrix,
+      (python::arg("mol"), python::arg("set15bounds") = true,
+       python::arg("scaleVDW") = false,
+       python::arg("doTriangleSmoothing") = true,
+       python::arg("useMacrocycle14config") = false,
+       python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::UFF),
+      docString.c_str());
 }

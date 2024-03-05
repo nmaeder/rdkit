@@ -1052,20 +1052,21 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
   SECTION("succesfull") {
     auto mol = "C1CCCCC1C(F)C(=O)O"_smiles;
     REQUIRE(mol);
-    DistGeom::BoundsMatPtr bm{new DistGeom::BoundsMatrix(mol->getNumAtoms())};
     DistGeom::BoundsMatPtr bmmmff{
         new DistGeom::BoundsMatrix(mol->getNumAtoms())};
     DistGeom::BoundsMatPtr bmuff{
         new DistGeom::BoundsMatrix(mol->getNumAtoms())};
-    DGeomHelpers::initBoundsMat(bm);
     DGeomHelpers::initBoundsMat(bmmmff);
     DGeomHelpers::initBoundsMat(bmuff);
+    bool set15bounds = false;
+    bool scaleVDW = false;
+    bool useMacrocycle14config = false;
+    bool forceTransAmides = false;
     {
       auto [success, params] = DGeomHelpers::Details::check12UFF(*mol);
       REQUIRE(success);
-      DGeomHelpers::setTopolBounds(*mol, bm, false, false, false, false,
-                                   DGeomHelpers::EmbedFF::UFF);
-      DGeomHelpers::setTopolBounds(*mol, bmuff, false, false, false, false,
+      DGeomHelpers::setTopolBounds(*mol, bmuff, set15bounds, scaleVDW,
+                                   useMacrocycle14config, forceTransAmides,
                                    DGeomHelpers::EmbedFF::UFF);
       for (auto bond : mol->bonds()) {
         auto i = bond->getBeginAtomIdx();
@@ -1073,15 +1074,15 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
         auto d = ForceFields::UFF::Utils::calcBondRestLength(
             bond->getBondTypeAsDouble(), params[bond->getBeginAtomIdx()],
             params[bond->getEndAtomIdx()]);
-        CHECK((bm->getLowerBound(i, j) <= d && d <= bm->getUpperBound(i, j)));
+        CHECK((bmuff->getLowerBound(i, j) <= d &&
+               d <= bmuff->getUpperBound(i, j)));
       }
     }
     {
       auto [success, params] = DGeomHelpers::Details::check12MMFF(*mol);
       REQUIRE(success);
-      DGeomHelpers::setTopolBounds(*mol, bm, false, false, false, false,
-                                   DGeomHelpers::EmbedFF::MMFF);
-      DGeomHelpers::setTopolBounds(*mol, bmmmff, false, false, false, false,
+      DGeomHelpers::setTopolBounds(*mol, bmmmff, set15bounds, scaleVDW,
+                                   useMacrocycle14config, forceTransAmides,
                                    DGeomHelpers::EmbedFF::MMFF);
       for (auto bond : mol->bonds()) {
         MMFF::MMFFBond bProp;
@@ -1091,7 +1092,8 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
         auto d = bProp.r0;
         auto i = bond->getBeginAtomIdx();
         auto j = bond->getEndAtomIdx();
-        CHECK((bm->getLowerBound(i, j) <= d && d <= bm->getUpperBound(i, j)));
+        CHECK((bmmmff->getLowerBound(i, j) <= d &&
+               d <= bmmmff->getUpperBound(i, j)));
       }
     }
     {
@@ -1112,7 +1114,8 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
         REQUIRE_FALSE(resm.first);
         auto resu = DGeomHelpers::Details::check12UFF(*mol);
         REQUIRE_FALSE(resu.first);
-        DGeomHelpers::setTopolBounds(*mol, bm, false, false, false, false,
+        DGeomHelpers::setTopolBounds(*mol, bm, set15bounds, scaleVDW,
+                                     useMacrocycle14config, forceTransAmides,
                                      DGeomHelpers::EmbedFF::MMFF);
         for (auto bond : mol->bonds()) {
           auto i = bond->getBeginAtomIdx();
