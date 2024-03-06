@@ -212,7 +212,8 @@ namespace Details {
 /** Get UFF Atom Type Parameters.
  *
  * @param mol Molecule to parametrize
- * @return pair of bool (whether parametrization was successful) and the atom params.
+ * @return pair of bool (whether parametrization was successful) and the atom
+ * params.
  */
 std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
   auto [p, s] = UFF::getAtomTypes(mol);
@@ -224,7 +225,8 @@ std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
 /** Get MMFF Atom Type Parameters.
  *
  * @param mol Molecule to parametrize
- * @return pair of bool (whether parametrization was successful) and the atom params.
+ * @return pair of bool (whether parametrization was successful) and the atom
+ * params.
  */
 std::pair<bool, MMFF::MMFFMolProperties> check12MMFF(const ROMol &mol) {
   ROMol molCopy(mol);
@@ -1844,6 +1846,9 @@ bool setNonFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   auto [success, params] =
       set12Bounds(mol, mmat, accumData, checkF, calcF, false);
   if (!success) {
+    BOOST_LOG(rdWarningLog)
+        << "Setting 1-2 Bounds with the selected ForceField failed. "
+        << "Molecule is embedded using the Fallback option." << std::endl;
     return false;
   }
   set13Bounds(mol, mmat, accumData, params);
