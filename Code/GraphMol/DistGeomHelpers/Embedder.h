@@ -320,15 +320,14 @@ inline int EmbedMolecule(
     bool useBasicKnowledge = false, bool verbose = false,
     double basinThresh = 5.0, bool onlyHeavyAtomsForRMS = false,
     unsigned int ETversion = 2, bool useSmallRingTorsions = false,
-    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true,
-    EmbedFF embedForceField = EmbedFF::UFF) {
+    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true) {
   EmbedParameters params(
       maxIterations, 1, seed, clearConfs, useRandomCoords, boxSizeMult,
       randNegEig, numZeroFail, coordMap, optimizerForceTol,
       ignoreSmoothingFailures, enforceChirality, useExpTorsionAnglePrefs,
       useBasicKnowledge, verbose, basinThresh, -1.0, onlyHeavyAtomsForRMS,
       ETversion, nullptr, true, useSmallRingTorsions, useMacrocycleTorsions,
-      useMacrocycle14config, embedForceField);
+      useMacrocycle14config);
   return EmbedMolecule(mol, params);
 };
 
@@ -421,15 +420,14 @@ inline void EmbedMultipleConfs(
     bool useBasicKnowledge = false, bool verbose = false,
     double basinThresh = 5.0, bool onlyHeavyAtomsForRMS = false,
     unsigned int ETversion = 2, bool useSmallRingTorsions = false,
-    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true,
-    EmbedFF embedForceField = EmbedFF::UFF) {
+    bool useMacrocycleTorsions = true, bool useMacrocycle14config = true) {
   EmbedParameters params(
       maxIterations, numThreads, seed, clearConfs, useRandomCoords, boxSizeMult,
       randNegEig, numZeroFail, coordMap, optimizerForceTol,
       ignoreSmoothingFailures, enforceChirality, useExpTorsionAnglePrefs,
       useBasicKnowledge, verbose, basinThresh, pruneRmsThresh,
       onlyHeavyAtomsForRMS, ETversion, nullptr, true, useSmallRingTorsions,
-      useMacrocycleTorsions, useMacrocycle14config, embedForceField);
+      useMacrocycleTorsions, useMacrocycle14config);
   EmbedMultipleConfs(mol, res, numConfs, params);
 };
 //! \overload
@@ -444,15 +442,14 @@ inline INT_VECT EmbedMultipleConfs(
     bool useBasicKnowledge = false, bool verbose = false,
     double basinThresh = 5.0, bool onlyHeavyAtomsForRMS = false,
     unsigned int ETversion = 2, bool useSmallRingTorsions = false,
-    bool useMacrocycleTorsions = false, bool useMacrocycle14config = false,
-    EmbedFF embedForceField = EmbedFF::UFF) {
+    bool useMacrocycleTorsions = false, bool useMacrocycle14config = false) {
   EmbedParameters params(
       maxIterations, 1, seed, clearConfs, useRandomCoords, boxSizeMult,
       randNegEig, numZeroFail, coordMap, optimizerForceTol,
       ignoreSmoothingFailures, enforceChirality, useExpTorsionAnglePrefs,
       useBasicKnowledge, verbose, basinThresh, pruneRmsThresh,
       onlyHeavyAtomsForRMS, ETversion, nullptr, true, useSmallRingTorsions,
-      useMacrocycleTorsions, useMacrocycle14config, embedForceField);
+      useMacrocycleTorsions, useMacrocycle14config);
   INT_VECT res;
   EmbedMultipleConfs(mol, res, numConfs, params);
   return res;

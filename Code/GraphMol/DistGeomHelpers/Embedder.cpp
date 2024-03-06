@@ -1175,11 +1175,11 @@ bool setupInitialBoundsMatrix(
   unsigned int nAtoms = mol->getNumAtoms();
   if (params.useExpTorsionAnglePrefs || params.useBasicKnowledge) {
     setTopolBounds(*mol, mmat, etkdgDetails.bonds, etkdgDetails.angles, true,
-                   false, params.useMacrocycle14config,
-                   params.forceTransAmides);
+                   false, params.useMacrocycle14config, params.forceTransAmides,
+                   params.embedForceField);
   } else {
     setTopolBounds(*mol, mmat, true, false, params.useMacrocycle14config,
-                   params.forceTransAmides);
+                   params.forceTransAmides, params.embedForceField);
   }
   double tol = 0.0;
   if (coordMap) {
@@ -1191,7 +1191,7 @@ bool setupInitialBoundsMatrix(
     // bounds matrix without 15 bounds and with VDW scaling
     initBoundsMat(mmat);
     setTopolBounds(*mol, mmat, false, true, params.useMacrocycle14config,
-                   params.forceTransAmides);
+                   params.forceTransAmides, params.embedForceField);
 
     if (coordMap) {
       adjustBoundsMatFromCoordMap(mmat, nAtoms, coordMap);
@@ -1204,7 +1204,7 @@ bool setupInitialBoundsMatrix(
         // proceed anyway with the more relaxed bounds matrix
         initBoundsMat(mmat);
         setTopolBounds(*mol, mmat, false, true, params.useMacrocycle14config,
-                       params.forceTransAmides);
+                       params.forceTransAmides, params.embedForceField);
 
         if (coordMap) {
           adjustBoundsMatFromCoordMap(mmat, nAtoms, coordMap);
