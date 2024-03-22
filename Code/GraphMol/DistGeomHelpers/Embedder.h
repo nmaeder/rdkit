@@ -112,6 +112,7 @@ enum class EmbedFF { UFF, MMFF };
   useMacrocycle14config  If 1-4 distances bound heuristics for
                 macrocycles is used
   embedForceField force field to use for 1-2 and 1-3 distances
+  numMinimizationSteps number of steps to minimize in embedding.
   CPCI	custom columbic interactions between atom pairs
   callback	      void pointer to a function for reporting progress,
                   will be called with the current iteration number.
