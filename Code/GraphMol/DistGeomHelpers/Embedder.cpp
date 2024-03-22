@@ -112,6 +112,7 @@ const EmbedParameters KDG(0,             // maxIterations
                           false,         // useMacrocycleTorsions
                           false,         // useMacrocycle14config
                           EmbedFF::UFF,  // embedForceField
+                          300,           // numMinimizationSteps
                           nullptr,       // CPCI
                           nullptr        // callback
 );
@@ -142,6 +143,7 @@ const EmbedParameters ETDG(0,             // maxIterations
                            false,         // useMacrocycleTorsions
                            false,         // useMacrocycle14config
                            EmbedFF::UFF,  // embedForceField
+                           300,           // numMinimizationSteps
                            nullptr,       // CPCI
                            nullptr        // callback
 );
@@ -171,6 +173,7 @@ const EmbedParameters ETKDG(0,             // maxIterations
                             false,         // useMacrocycleTorsions
                             false,         // useMacrocycle14config
                             EmbedFF::UFF,  // embedForceField
+                            300,           // numMinimizationSteps
                             nullptr,       // CPCI
                             nullptr        // callback
 );
@@ -201,6 +204,7 @@ const EmbedParameters ETKDGv2(0,             // maxIterations
                               false,         // useMacrocycleTorsions
                               false,         // useMacrocycle14config
                               EmbedFF::UFF,  // embedForceField
+                              300,           // numMinimizationSteps
                               nullptr,       // CPCI
                               nullptr        // callback
 );
@@ -232,6 +236,7 @@ const EmbedParameters ETKDGv3(0,             // maxIterations
                               true,          // useMacrocycleTorsions
                               true,          // useMacrocycle14config
                               EmbedFF::UFF,  // embedForceField
+                              300,           // numMinimizationSteps
                               nullptr,       // CPCI
                               nullptr        // callback
 );
@@ -263,6 +268,7 @@ const EmbedParameters srETKDGv3(0,             // maxIterations
                                 false,         // useMacrocycleTorsions
                                 false,         // useMacrocycle14config
                                 EmbedFF::UFF,  // embedForceField
+                                300,           // numMinimizationSteps
                                 nullptr,       // CPCI
                                 nullptr        // callback
 );
@@ -626,7 +632,8 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
   field->initialize();
   if (field->calcEnergy() > ERROR_TOL) {
     // while (needMore) {
-    field->minimize(300, embedParams.optimizerForceTol);
+    field->minimize(embedParams.numMinimizationSteps,
+                    embedParams.optimizerForceTol);
     //      ++nPasses;
     //}
   }

@@ -161,6 +161,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   bool enableSequentialRandomSeeds{false};
   bool symmetrizeConjugatedTerminalGroupsForPruning{true};
   EmbedFF embedForceField{EmbedFF::UFF};
+  unsigned int numMinimizationSteps{300};
 
   EmbedParameters() : boundsMat(nullptr), CPCI(nullptr), callback(nullptr) {}
   EmbedParameters(
@@ -176,6 +177,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
       bool embedFragmentsSeparately = true, bool useSmallRingTorsions = false,
       bool useMacrocycleTorsions = false, bool useMacrocycle14config = false,
       EmbedFF embedForceField = EmbedFF::UFF,
+      unsigned int numMinimizationSteps = 300,
       std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           CPCI = nullptr,
       void (*callback)(unsigned int) = nullptr)
@@ -205,7 +207,8 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
         useMacrocycle14config(useMacrocycle14config),
         CPCI(std::move(CPCI)),
         callback(callback),
-        embedForceField(embedForceField) {}
+        embedForceField(embedForceField),
+        numMinimizationSteps(numMinimizationSteps) {}
 };
 
 //! update parameters from a JSON string
