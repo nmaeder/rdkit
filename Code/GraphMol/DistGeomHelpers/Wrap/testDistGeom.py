@@ -880,16 +880,16 @@ class TestCase(unittest.TestCase):
         params.embedForceField = rdDistGeom.EmbedFF.MMFF
         rdDistGeom.EmbedMolecule(mol, params)
 
-  def testSymmetrizeTerminal(self):
-    mol = Chem.AddHs(Chem.MolFromSmiles("FCC(=O)O"))
-    ps = rdDistGeom.ETKDGv3()
-    ps.randomSeed = 0xc0ffee
-    ps.pruneRmsThresh = 0.5
-    cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps)
-    self.assertEqual(len(cids), 1)
-    ps.symmetrizeConjugatedTerminalGroupsForPruning = False
-    cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps)
-    self.assertGreater(len(cids), 1)
+    def testSymmetrizeTerminal(self):
+        mol = Chem.AddHs(Chem.MolFromSmiles("FCC(=O)O"))
+        ps = rdDistGeom.ETKDGv3()
+        ps.randomSeed = 0xC0FFEE
+        ps.pruneRmsThresh = 0.5
+        cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps)
+        self.assertEqual(len(cids), 1)
+        ps.symmetrizeConjugatedTerminalGroupsForPruning = False
+        cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps)
+        self.assertGreater(len(cids), 1)
 
 
 if __name__ == "__main__":
