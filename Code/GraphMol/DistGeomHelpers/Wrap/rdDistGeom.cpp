@@ -541,6 +541,9 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
       .def_readwrite(
           "embedForceField", &PyEmbedParameters::embedForceField,
           "Force Field to use for 1-2 and 1-3 bounds matrix generation.")
+      .def_readwrite("numMinimizationSteps",
+                     &PyEmbedParameters::numMinimizationSteps,
+                     "Max number of minimization steps after embedding.")
       .def_readwrite(
           "boundsMatForceScaling", &PyEmbedParameters::boundsMatForceScaling,
           "scale the weights of the atom pair distance restraints relative to "
