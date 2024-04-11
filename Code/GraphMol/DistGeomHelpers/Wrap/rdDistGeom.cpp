@@ -23,6 +23,35 @@
 
 namespace python = boost::python;
 
+std::pair<int, DistGeom::BoundsMatrix::DATA_SPTR> pyArrayToMatrix(
+    const python::object &boundsMatArg) {
+  PyObject *boundsMatObj = boundsMatArg.ptr();
+  if (!PyArray_Check(boundsMatObj)) {
+    throw_value_error("Argument isn't an array");
+  }
+  auto *boundsMat = reinterpret_cast<PyArrayObject *>(boundsMatObj);
+  // get the dimensions of the array
+  int nrows = PyArray_DIM(boundsMat, 0);
+  int ncols = PyArray_DIM(boundsMat, 1);
+  if (nrows != ncols) {
+    throw_value_error("The array has to be square");
+  }
+  if (nrows <= 0) {
+    throw_value_error("The array has to have a nonzero size");
+  }
+  if (PyArray_DESCR(boundsMat)->type_num != NPY_DOUBLE) {
+    throw_value_error("Only double arrays are currently supported");
+  }
+
+  unsigned int dSize = nrows * nrows;
+  auto *cData = new double[dSize];
+  auto *inData = reinterpret_cast<double *>(PyArray_DATA(boundsMat));
+  memcpy(static_cast<void *>(cData), static_cast<const void *>(inData),
+         dSize * sizeof(double));
+  DistGeom::BoundsMatrix::DATA_SPTR sdata(cData);
+  return std::make_pair(nrows, sdata);
+}
+
 namespace {
 struct PyEmbedParameters
     : public RDKit::DGeomHelpers::EmbedParameters,
@@ -68,31 +97,7 @@ struct PyEmbedParameters
   }
 
   void setBoundsMatrix(const python::object &boundsMatArg) {
-    PyObject *boundsMatObj = boundsMatArg.ptr();
-    if (!PyArray_Check(boundsMatObj)) {
-      throw_value_error("Argument isn't an array");
-    }
-
-    auto *boundsMat = reinterpret_cast<PyArrayObject *>(boundsMatObj);
-    // get the dimensions of the array
-    int nrows = PyArray_DIM(boundsMat, 0);
-    int ncols = PyArray_DIM(boundsMat, 1);
-    if (nrows != ncols) {
-      throw_value_error("The array has to be square");
-    }
-    if (nrows <= 0) {
-      throw_value_error("The array has to have a nonzero size");
-    }
-    if (PyArray_DESCR(boundsMat)->type_num != NPY_DOUBLE) {
-      throw_value_error("Only double arrays are currently supported");
-    }
-
-    unsigned int dSize = nrows * nrows;
-    auto *cData = new double[dSize];
-    auto *inData = reinterpret_cast<double *>(PyArray_DATA(boundsMat));
-    memcpy(static_cast<void *>(cData), static_cast<const void *>(inData),
-           dSize * sizeof(double));
-    DistGeom::BoundsMatrix::DATA_SPTR sdata(cData);
+    auto [nrows, sdata] = pyArrayToMatrix(boundsMatArg);
     this->boundsMat = boost::shared_ptr<const DistGeom::BoundsMatrix>(
         new DistGeom::BoundsMatrix(nrows, sdata));
   }
@@ -199,6 +204,38 @@ INT_VECT EmbedMultipleConfs2(ROMol &mol, unsigned int numConfs,
     DGeomHelpers::EmbedMultipleConfs(mol, res, numConfs, params);
   }
   return res;
+}
+
+PyObject *getMolBoundsMatrixWithCustomBounds(
+    ROMol &mol, const python::object &customBoundsMatrix,
+    bool set15bounds = true, bool scaleVDW = false,
+    bool doTriangleSmoothing = true, bool useMacrocycle14config = false,
+    DGeomHelpers::EmbedFF embedForceField = DGeomHelpers::EmbedFF::UFF) {
+  auto [nrows, sdata] = pyArrayToMatrix(customBoundsMatrix);
+  unsigned int nats = mol.getNumAtoms();
+  if (unsigned(nrows) != nats) {
+    throw_value_error(
+        "CustomBoundsMat dimensions don't match number of Atoms.");
+  }
+
+  npy_intp dims[2];
+  dims[0] = nats;
+  dims[1] = nats;
+  DistGeom::BoundsMatPtr cBoundsMat(new DistGeom::BoundsMatrix(nrows, sdata));
+  DistGeom::BoundsMatPtr mat(new DistGeom::BoundsMatrix(nats));
+  DGeomHelpers::initBoundsMat(mat);
+  auto forceTransAmides = true;
+  DGeomHelpers::setTopolBounds(mol, mat, cBoundsMat, set15bounds, scaleVDW,
+                               useMacrocycle14config, forceTransAmides,
+                               embedForceField);
+  if (doTriangleSmoothing) {
+    DistGeom::triangleSmoothBounds(mat);
+  }
+  auto *res = (PyArrayObject *)PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+  memcpy(static_cast<void *>(PyArray_DATA(res)),
+         static_cast<void *>(mat->getData()), nats * nats * sizeof(double));
+
+  return PyArray_Return(res);
 }
 
 PyObject *getMolBoundsMatrix(
@@ -648,6 +685,29 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
       "GetMoleculeBoundsMatrix", RDKit::getMolBoundsMatrix,
       (python::arg("mol"), python::arg("set15bounds") = true,
        python::arg("scaleVDW") = false,
+       python::arg("doTriangleSmoothing") = true,
+       python::arg("useMacrocycle14config") = false,
+       python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::UFF),
+      docString.c_str());
+  docString =
+      "Returns the distance bounds matrix for a molecule\n\
+ \n\
+ ARGUMENTS:\n\n\
+    - mol : the molecule of interest\n\
+    - set15bounds : set bounds for 1-5 atom distances based on \n\
+                    topology (otherwise stop at 1-4s)\n\
+    - scaleVDW : scale down the sum of VDW radii when setting the \n\
+                 lower bounds for atoms less than 5 bonds apart \n\
+    - doTriangleSmoothing : run triangle smoothing on the bounds \n\
+                 matrix before returning it \n\
+ RETURNS:\n\n\
+    the bounds matrix as a Numeric array with lower bounds in \n\
+    the lower triangle and upper bounds in the upper triangle\n\
+\n";
+  python::def(
+      "GetMoleculeBoundsMatrix", RDKit::getMolBoundsMatrixWithCustomBounds,
+      (python::arg("mol"), python::arg("customBoundsMatrix"),
+       python::arg("set15bounds") = true, python::arg("scaleVDW") = false,
        python::arg("doTriangleSmoothing") = true,
        python::arg("useMacrocycle14config") = false,
        python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::UFF),

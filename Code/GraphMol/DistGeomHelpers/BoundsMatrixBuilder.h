@@ -59,6 +59,14 @@ RDKIT_DISTGEOMHELPERS_EXPORT void setTopolBounds(
     bool scaleVDW = false, bool useMacrocycle14config = false,
     bool forceTransAmides = true, DGeomHelpers::EmbedFF = EmbedFF::UFF);
 
+/*! \overload for marc
+ */
+RDKIT_DISTGEOMHELPERS_EXPORT void setTopolBounds(
+    const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+    DistGeom::BoundsMatPtr customBounds, bool set15bounds = true,
+    bool scaleVDW = false, bool useMacrocycle14config = false,
+    bool forceTransAmides = true, DGeomHelpers::EmbedFF = EmbedFF::UFF);
+
 /*! \overload for experimental torsion angle preferences
  */
 RDKIT_DISTGEOMHELPERS_EXPORT void setTopolBounds(

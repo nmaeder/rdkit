@@ -246,6 +246,7 @@ std::pair<bool, MMFF::MMFFMolProperties> check12MMFF(const ROMol &mol) {
 double calc12UFFBounds(const ROMol &mol, Bond *const bond,
                        UFF::AtomicParamVect params, unsigned int begId,
                        unsigned int endId) {
+  RDUNUSED_PARAM(mol);
   auto bOrder = bond->getBondTypeAsDouble();
   return (params[begId] && params[endId] && bOrder > 0)
              ? ForceFields::UFF::Utils::calcBondRestLength(
@@ -1863,6 +1864,52 @@ void setFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
 }  // namespace Details
 
 void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+                    DistGeom::BoundsMatPtr customBounds, bool set15bounds,
+                    bool scaleVDW, bool useMacrocycle14config,
+                    bool forceTransAmides, EmbedFF embedForceField) {
+  PRECONDITION(mmat.get(), "bad pointer");
+  unsigned int nb = mol.getNumBonds();
+  unsigned int na = mol.getNumAtoms();
+  if (!na) {
+    throw ValueErrorException("molecule has no atoms");
+  }
+  ComputedData accumData(na, nb);
+  double *distMatrix = nullptr;
+  distMatrix = MolOps::getDistanceMat(mol);
+
+  bool embeddSuccesfull = false;
+  if (embedForceField == EmbedFF::MMFF) {
+    embeddSuccesfull = Details::setNonFallback1213(
+        mol, mmat, accumData, Details::check12MMFF, Details::calc12MMFFBounds);
+  }
+  if (!embeddSuccesfull) {
+    Details::setFallback1213(mol, mmat, accumData);
+  }
+
+  unsigned int npt = mmat->numRows();
+  for (unsigned int i = 1; i < npt; i++) {
+    for (unsigned int j = 0; j < i; j++) {
+      auto lb = customBounds->getLowerBound(i, j);
+      auto ub = customBounds->getUpperBound(i, j);
+      if (lb == 0.0 || ub == 1000.0) {
+        continue;
+      }
+      mmat->setLowerBound(i, j, lb);
+      mmat->setUpperBound(i, j, ub);
+    }
+  }
+
+  set14Bounds(mol, mmat, accumData, distMatrix, useMacrocycle14config,
+              forceTransAmides);
+
+  if (set15bounds) {
+    set15Bounds(mol, mmat, accumData, distMatrix);
+  }
+
+  setLowerBoundVDW(mol, mmat, scaleVDW, distMatrix);
+}
+
+void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
                     bool set15bounds, bool scaleVDW, bool useMacrocycle14config,
                     bool forceTransAmides, EmbedFF embedForceField) {
   PRECONDITION(mmat.get(), "bad pointer");
@@ -1986,9 +2033,8 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
  compute the lower and upper bounds for the distance between 15 atoms give
  than
  the first
- four atoms are in cis configuration. The 15 limits are computed assuming the
- following
- configuration
+ four atoms are in cis configuration. The 15 limits are computed assuming
+ the following configuration
          5
           \
      1     4
@@ -2027,16 +2073,9 @@ double _compute15DistsCisCis(double d1, double d2, double d3, double d4,
  compute the lower and upper bounds for the distance between 15 atoms give
  than
  the first
- four atoms are in cis configuration. The 15 limits are computed assuming the
- following
- configuration
-  1     4-5
-   \   /
-    2-3
- ARGUMENTS:
-   d1 - distance between 1 and 2
-   d2 - distance between 2 and 3
-   d3 - distance between 3 and 4
+ four atoms are in cis configuration. The 15 limits are computed assuming
+ the following configuration 1     4-5 \   / 2-3 ARGUMENTS: d1 - distance
+ between 1 and 2 d2 - distance between 2 and 3 d3 - distance between 3 and 4
    d4 - distance between 4 and 5
    ang12 - angle(123)
    ang23 - angle(234)
