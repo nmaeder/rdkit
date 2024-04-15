@@ -24,6 +24,7 @@
 #include <ForceField/UFF/Inversion.h>
 #include <GraphMol/ForceFieldHelpers/CrystalFF/TorsionPreferences.h>
 #include <GraphMol/ForceFieldHelpers/CrystalFF/TorsionAngleM6.h>
+#include <GraphMol/DistGeomHelpers/Embedder.h>
 #include <boost/dynamic_bitset.hpp>
 #include <ForceField/MMFF/Nonbonded.h>
 
@@ -239,7 +240,9 @@ ForceFields::ForceField *constructForceField(
 
 ForceFields::ForceField *construct3DForceField(
     const BoundsMatrix &mmat, RDGeom::Point3DPtrVect &positions,
-    const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails) {
+    const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
+    const std::vector<std::pair<unsigned int, unsigned int>>
+        &customKConstraintAtomIndices) {
   unsigned int N = mmat.numRows();
   CHECK_INVARIANT(N == positions.size(), "");
   CHECK_INVARIANT(etkdgDetails.expTorsionAtoms.size() ==
@@ -369,6 +372,16 @@ ForceFields::ForceField *construct3DForceField(
             field, i, j, l, u, fdist);
         field->contribs().push_back(ForceFields::ContribPtr(contrib));
       }
+    }
+  }
+  if (!customKConstraintAtomIndices.empty()) {
+    for (auto const &[i, j] : customKConstraintAtomIndices) {
+      // auto [i, j] = pair;
+      double l = mmat.getLowerBound(i, j);
+      double u = mmat.getUpperBound(i, j);
+      auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
+          field, i, j, l, u, fdist * 10);
+      field->contribs().push_back(ForceFields::ContribPtr(contrib));
     }
   }
 

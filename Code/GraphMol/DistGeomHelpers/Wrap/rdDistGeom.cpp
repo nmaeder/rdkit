@@ -96,6 +96,20 @@ struct PyEmbedParameters
     }
   }
 
+  void setCustomKConstraintAtomIndices(const python::list &customKList) {
+    customKConstraintAtomIndices =
+        std::shared_ptr<std::vector<std::pair<unsigned int, unsigned int>>>(
+            new std::vector<std::pair<unsigned int, unsigned int>>);
+    unsigned int nKeys =
+        python::extract<unsigned int>(customKList.attr("__len__")());
+    for (unsigned int i = 0; i < nKeys; ++i) {
+      python::tuple id = python::extract<python::tuple>(customKList[i]);
+      unsigned int a = python::extract<unsigned int>(id[0]);
+      unsigned int b = python::extract<unsigned int>(id[1]);
+      customKConstraintAtomIndices->push_back(std::make_pair(a, b));
+    }
+  }
+
   void setBoundsMatrix(const python::object &boundsMatArg) {
     auto [nrows, sdata] = pyArrayToMatrix(boundsMatArg);
     this->boundsMat = boost::shared_ptr<const DistGeom::BoundsMatrix>(
@@ -597,6 +611,10 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
            python::args("self", "CPCIdict"),
            "set the customised pairwise Columb-like interaction to atom pairs."
            "used during structural minimisation stage")
+      .def("SetCustomKConstraintAtomIndices",
+           &PyEmbedParameters::setCustomKConstraintAtomIndices,
+           python::args("self", "customKList"),
+           "Give a list of atom pair indices to constrain in KDG minimization.")
       .def_readwrite("forceTransAmides", &PyEmbedParameters::forceTransAmides,
                      "constrain amide bonds to be trans")
       .def_readwrite(

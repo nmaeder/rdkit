@@ -114,6 +114,7 @@ const EmbedParameters KDG(0,             // maxIterations
                           EmbedFF::UFF,  // embedForceField
                           300,           // numMinimizationSteps
                           nullptr,       // CPCI
+                          nullptr,       // customKConstraintAtomIndices
                           nullptr        // callback
 );
 
@@ -145,6 +146,7 @@ const EmbedParameters ETDG(0,             // maxIterations
                            EmbedFF::UFF,  // embedForceField
                            300,           // numMinimizationSteps
                            nullptr,       // CPCI
+                           nullptr,       // customKConstraintAtomIndices
                            nullptr        // callback
 );
 //! Parameters corresponding to Sereina Riniker's ETKDG approach
@@ -175,6 +177,7 @@ const EmbedParameters ETKDG(0,             // maxIterations
                             EmbedFF::UFF,  // embedForceField
                             300,           // numMinimizationSteps
                             nullptr,       // CPCI
+                            nullptr,       // customKConstraintAtomIndices
                             nullptr        // callback
 );
 
@@ -206,6 +209,7 @@ const EmbedParameters ETKDGv2(0,             // maxIterations
                               EmbedFF::UFF,  // embedForceField
                               300,           // numMinimizationSteps
                               nullptr,       // CPCI
+                              nullptr,       // customKConstraintAtomIndices
                               nullptr        // callback
 );
 
@@ -238,6 +242,7 @@ const EmbedParameters ETKDGv3(0,             // maxIterations
                               EmbedFF::UFF,  // embedForceField
                               300,           // numMinimizationSteps
                               nullptr,       // CPCI
+                              nullptr,       // customKConstraintAtomIndices
                               nullptr        // callback
 );
 
@@ -270,6 +275,7 @@ const EmbedParameters srETKDGv3(0,             // maxIterations
                                 EmbedFF::UFF,  // embedForceField
                                 300,           // numMinimizationSteps
                                 nullptr,       // CPCI
+                                nullptr,       // customKConstraintAtomIndices
                                 nullptr        // callback
 );
 
@@ -615,8 +621,14 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
       field.reset(DistGeom::construct3DForceField(
           *eargs.mmat, positions3D, *eargs.etkdgDetails, *embedParams.CPCI));
     } else {
-      field.reset(DistGeom::construct3DForceField(*eargs.mmat, positions3D,
-                                                  *eargs.etkdgDetails));
+      if (embedParams.customKConstraintAtomIndices) {
+        field.reset(DistGeom::construct3DForceField(
+            *eargs.mmat, positions3D, *eargs.etkdgDetails,
+            *embedParams.customKConstraintAtomIndices));
+      } else {
+        field.reset(DistGeom::construct3DForceField(*eargs.mmat, positions3D,
+                                                    *eargs.etkdgDetails));
+      }
     }
   } else {  // plain ETDG
     field.reset(DistGeom::constructPlain3DForceField(*eargs.mmat, positions3D,
