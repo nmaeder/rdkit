@@ -241,8 +241,10 @@ ForceFields::ForceField *constructForceField(
 ForceFields::ForceField *construct3DForceField(
     const BoundsMatrix &mmat, RDGeom::Point3DPtrVect &positions,
     const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
-    const std::vector<std::pair<unsigned int, unsigned int>>
+    bool useKCustoms,
+    const std::map<std::pair<unsigned int, unsigned int>, double>
         &customKConstraintAtomIndices) {
+  RDUNUSED_PARAM(useKCustoms)
   unsigned int N = mmat.numRows();
   CHECK_INVARIANT(N == positions.size(), "");
   CHECK_INVARIANT(etkdgDetails.expTorsionAtoms.size() ==
@@ -375,12 +377,12 @@ ForceFields::ForceField *construct3DForceField(
     }
   }
   if (!customKConstraintAtomIndices.empty()) {
-    for (auto const &[i, j] : customKConstraintAtomIndices) {
-      // auto [i, j] = pair;
+    for (auto const &[key, value] : customKConstraintAtomIndices) {
+      auto [i, j] = key;
       double l = mmat.getLowerBound(i, j);
       double u = mmat.getUpperBound(i, j);
       auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
-          field, i, j, l, u, fdist * 10);
+          field, i, j, l, u, value);
       field->contribs().push_back(ForceFields::ContribPtr(contrib));
     }
   }

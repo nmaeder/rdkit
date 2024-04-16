@@ -622,8 +622,9 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
           *eargs.mmat, positions3D, *eargs.etkdgDetails, *embedParams.CPCI));
     } else {
       if (embedParams.customKConstraintAtomIndices) {
+        auto useKCustoms = true;
         field.reset(DistGeom::construct3DForceField(
-            *eargs.mmat, positions3D, *eargs.etkdgDetails,
+            *eargs.mmat, positions3D, *eargs.etkdgDetails, useKCustoms,
             *embedParams.customKConstraintAtomIndices));
       } else {
         field.reset(DistGeom::construct3DForceField(*eargs.mmat, positions3D,

@@ -153,7 +153,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   bool useMacrocycleTorsions{false};
   bool useMacrocycle14config{false};
   std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>> CPCI;
-  std::shared_ptr<std::vector<std::pair<unsigned int, unsigned int>>>
+  std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
       customKConstraintAtomIndices;
   void (*callback)(unsigned int);
   bool forceTransAmides{true};
@@ -187,7 +187,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
       unsigned int numMinimizationSteps = 300,
       std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           CPCI = nullptr,
-      std::shared_ptr<std::vector<std::pair<unsigned int, unsigned int>>>
+      std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           customKConstraintAtomIndices = nullptr,
       void (*callback)(unsigned int) = nullptr)
       : maxIterations(maxIterations),

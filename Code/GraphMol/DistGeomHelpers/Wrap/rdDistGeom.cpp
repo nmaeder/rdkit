@@ -81,9 +81,8 @@ struct PyEmbedParameters
   }
   void setCPCI(const python::dict &CPCIdict) {
     // CPCI has the atom pair tuple as key and charge product as value
-    CPCI = std::shared_ptr<
-        std::map<std::pair<unsigned int, unsigned int>, double>>(
-        new std::map<std::pair<unsigned int, unsigned int>, double>);
+    CPCI = std::make_shared<
+        std::map<std::pair<unsigned int, unsigned int>, double>>();
 
     python::list ks = CPCIdict.keys();
     unsigned int nKeys = python::extract<unsigned int>(ks.attr("__len__")());
@@ -96,17 +95,19 @@ struct PyEmbedParameters
     }
   }
 
-  void setCustomKConstraintAtomIndices(const python::list &customKList) {
-    customKConstraintAtomIndices =
-        std::shared_ptr<std::vector<std::pair<unsigned int, unsigned int>>>(
-            new std::vector<std::pair<unsigned int, unsigned int>>);
-    unsigned int nKeys =
-        python::extract<unsigned int>(customKList.attr("__len__")());
+  void setCustomKConstraintAtomIndices(const python::dict &customKDict) {
+    customKConstraintAtomIndices = std::make_shared<
+        std::map<std::pair<unsigned int, unsigned int>, double>>();
+
+    python::list ks = customKDict.keys();
+    unsigned int nKeys = python::extract<unsigned int>(ks.attr("__len__")());
+
     for (unsigned int i = 0; i < nKeys; ++i) {
-      python::tuple id = python::extract<python::tuple>(customKList[i]);
+      python::tuple id = python::extract<python::tuple>(ks[i]);
       unsigned int a = python::extract<unsigned int>(id[0]);
       unsigned int b = python::extract<unsigned int>(id[1]);
-      customKConstraintAtomIndices->push_back(std::make_pair(a, b));
+      (*customKConstraintAtomIndices)[std::make_pair(a, b)] =
+          python::extract<double>(customKDict[id]);
     }
   }
 
@@ -611,10 +612,12 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
            python::args("self", "CPCIdict"),
            "set the customised pairwise Columb-like interaction to atom pairs."
            "used during structural minimisation stage")
-      .def("SetCustomKConstraintAtomIndices",
-           &PyEmbedParameters::setCustomKConstraintAtomIndices,
-           python::args("self", "customKList"),
-           "Give a list of atom pair indices to constrain in KDG minimization.")
+      .def(
+          "SetCustomKConstraintAtomIndices",
+          &PyEmbedParameters::setCustomKConstraintAtomIndices,
+          python::args("self", "customKDict"),
+          "Give a dict mapping atom pair indices to a force constant to be used to, "
+          "constrain said pair with in the K minimization.")
       .def_readwrite("forceTransAmides", &PyEmbedParameters::forceTransAmides,
                      "constrain amide bonds to be trans")
       .def_readwrite(
