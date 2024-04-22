@@ -375,10 +375,13 @@ bool isLargerSP2Atom(const Atom *atom) {
 void _set13BoundsHelper(unsigned int aid1, unsigned int aid, unsigned int aid3,
                         double angle, const ComputedData &accumData,
                         DistGeom::BoundsMatPtr mmat, const ROMol &mol) {
-  auto bid1 = mol.getBondBetweenAtoms(aid1, aid)->getIdx();
-  auto bid2 = mol.getBondBetweenAtoms(aid, aid3)->getIdx();
-  auto dl = RDGeom::compute13Dist(accumData.bondLengths[bid1],
-                                  accumData.bondLengths[bid2], angle);
+  //auto bid1 = mol.getBondBetweenAtoms(aid1, aid)->getIdx();
+  //auto bid2 = mol.getBondBetweenAtoms(aid, aid3)->getIdx();
+  //auto dl = RDGeom::compute13Dist(accumData.bondLengths[bid1],
+  //                                accumData.bondLengths[bid2], angle);
+  auto bondLength1 = (mmat->getLowerBound(aid1, aid) + mmat->getUpperBound(aid1, aid)) / 2;
+  auto bondLength2 = (mmat->getLowerBound(aid, aid3) + mmat->getUpperBound(aid, aid3)) / 2;
+  auto dl = RDGeom::compute13Dist(bondLength1, bondLength2, angle);
   auto distTol = DIST13_TOL;
   // Now increase the tolerance if we're outside of the first row of the
   // periodic table.

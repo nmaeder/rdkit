@@ -731,6 +731,6 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
        python::arg("set15bounds") = true, python::arg("scaleVDW") = false,
        python::arg("doTriangleSmoothing") = true,
        python::arg("useMacrocycle14config") = false,
-       python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::UFF),
+       python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::MMFF),
       docString.c_str());
 }
