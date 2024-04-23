@@ -36,8 +36,8 @@ const double GEN_DIST_TOL = 0.06;  //  a general distance tolerance
 const double DIST15_TOL = 0.08;
 const double VDW_SCALE_15 = 0.7;
 const double MAX_UPPER = 1000.0;
-const double MMFF_CORR_SLOPE = 1.2;
-const double MMFF_CORR_INTERCEPT = 0.2;
+const double MMFF_CORR_SLOPE = 1.02;
+const double MMFF_CORR_INTERCEPT = 0.02;
 static const double minMacrocycleRingSize = 9;
 #include <map>
 
