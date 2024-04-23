@@ -376,6 +376,9 @@ ForceFields::ForceField *construct3DForceField(
       }
     }
   }
+
+  // Add distance Constraints for dash bounds set
+
   if (!customKConstraintAtomIndices.empty()) {
     for (auto const &[key, value] : customKConstraintAtomIndices) {
       auto [i, j] = key;
