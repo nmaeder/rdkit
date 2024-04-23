@@ -36,6 +36,8 @@ const double GEN_DIST_TOL = 0.06;  //  a general distance tolerance
 const double DIST15_TOL = 0.08;
 const double VDW_SCALE_15 = 0.7;
 const double MAX_UPPER = 1000.0;
+const double MMFF_CORR_SLOPE = 1.2;
+const double MMFF_CORR_INTERCEPT = 0.2;
 static const double minMacrocycleRingSize = 9;
 #include <map>
 
@@ -375,12 +377,14 @@ bool isLargerSP2Atom(const Atom *atom) {
 void _set13BoundsHelper(unsigned int aid1, unsigned int aid, unsigned int aid3,
                         double angle, const ComputedData &accumData,
                         DistGeom::BoundsMatPtr mmat, const ROMol &mol) {
-  //auto bid1 = mol.getBondBetweenAtoms(aid1, aid)->getIdx();
-  //auto bid2 = mol.getBondBetweenAtoms(aid, aid3)->getIdx();
-  //auto dl = RDGeom::compute13Dist(accumData.bondLengths[bid1],
-  //                                accumData.bondLengths[bid2], angle);
-  auto bondLength1 = (mmat->getLowerBound(aid1, aid) + mmat->getUpperBound(aid1, aid)) / 2;
-  auto bondLength2 = (mmat->getLowerBound(aid, aid3) + mmat->getUpperBound(aid, aid3)) / 2;
+  // auto bid1 = mol.getBondBetweenAtoms(aid1, aid)->getIdx();
+  // auto bid2 = mol.getBondBetweenAtoms(aid, aid3)->getIdx();
+  // auto dl = RDGeom::compute13Dist(accumData.bondLengths[bid1],
+  //                                 accumData.bondLengths[bid2], angle);
+  auto bondLength1 =
+      (mmat->getLowerBound(aid1, aid) + mmat->getUpperBound(aid1, aid)) / 2;
+  auto bondLength2 =
+      (mmat->getLowerBound(aid, aid3) + mmat->getUpperBound(aid, aid3)) / 2;
   auto dl = RDGeom::compute13Dist(bondLength1, bondLength2, angle);
   auto distTol = DIST13_TOL;
   // Now increase the tolerance if we're outside of the first row of the
@@ -1889,6 +1893,17 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
     Details::setFallback1213(mol, mmat, accumData);
   }
 
+  // Correcting for DASH
+  for (const auto bond : mol.bonds()) {
+    auto i = bond->getBeginAtomIdx();
+    auto j = bond->getEndAtomIdx();
+    auto lb = mmat->getLowerBound(i, j);
+    auto ub = mmat->getUpperBound(i, j);
+    mmat->setLowerBound(i, j, lb * MMFF_CORR_SLOPE + MMFF_CORR_INTERCEPT);
+    mmat->setUpperBound(i, j, ub * MMFF_CORR_SLOPE + MMFF_CORR_INTERCEPT);
+  }
+
+  // overwrite with dash bounds
   unsigned int npt = mmat->numRows();
   for (unsigned int i = 1; i < npt; i++) {
     for (unsigned int j = 0; j < i; j++) {
