@@ -153,8 +153,6 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   bool useMacrocycleTorsions{false};
   bool useMacrocycle14config{false};
   std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>> CPCI;
-  std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
-      customKConstraintAtomIndices;
   void (*callback)(unsigned int);
   bool forceTransAmides{true};
   bool useSymmetryForPruning{true};
@@ -166,11 +164,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   EmbedFF embedForceField{EmbedFF::UFF};
   unsigned int numMinimizationSteps{300};
 
-  EmbedParameters()
-      : boundsMat(nullptr),
-        CPCI(nullptr),
-        customKConstraintAtomIndices(nullptr),
-        callback(nullptr) {}
+  EmbedParameters() : boundsMat(nullptr), CPCI(nullptr), callback(nullptr) {}
   EmbedParameters(
       unsigned int maxIterations, int numThreads, int randomSeed,
       bool clearConfs, bool useRandomCoords, double boxSizeMult,
@@ -187,8 +181,6 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
       unsigned int numMinimizationSteps = 300,
       std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           CPCI = nullptr,
-      std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
-          customKConstraintAtomIndices = nullptr,
       void (*callback)(unsigned int) = nullptr)
       : maxIterations(maxIterations),
         numThreads(numThreads),
@@ -215,7 +207,6 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
         useMacrocycleTorsions(useMacrocycleTorsions),
         useMacrocycle14config(useMacrocycle14config),
         CPCI(std::move(CPCI)),
-        customKConstraintAtomIndices(std::move(customKConstraintAtomIndices)),
         callback(callback),
         embedForceField(embedForceField),
         numMinimizationSteps(numMinimizationSteps) {}

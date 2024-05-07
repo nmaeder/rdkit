@@ -241,9 +241,7 @@ ForceFields::ForceField *constructForceField(
 ForceFields::ForceField *construct3DForceField(
     const BoundsMatrix &mmat, RDGeom::Point3DPtrVect &positions,
     const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
-    bool useKCustoms,
-    const std::map<std::pair<unsigned int, unsigned int>, double>
-        &customKConstraintAtomIndices) {
+    bool useKCustoms) {
   RDUNUSED_PARAM(useKCustoms)
   unsigned int N = mmat.numRows();
   CHECK_INVARIANT(N == positions.size(), "");
@@ -374,19 +372,6 @@ ForceFields::ForceField *construct3DForceField(
             field, i, j, l, u, fdist);
         field->contribs().push_back(ForceFields::ContribPtr(contrib));
       }
-    }
-  }
-
-  // Add distance Constraints for dash bounds set
-
-  if (!customKConstraintAtomIndices.empty()) {
-    for (auto const &[key, value] : customKConstraintAtomIndices) {
-      auto [i, j] = key;
-      double l = mmat.getLowerBound(i, j);
-      double u = mmat.getUpperBound(i, j);
-      auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
-          field, i, j, l, u, value);
-      field->contribs().push_back(ForceFields::ContribPtr(contrib));
     }
   }
 
