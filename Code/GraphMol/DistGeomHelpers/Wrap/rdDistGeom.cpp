@@ -225,7 +225,8 @@ PyObject *getMolBoundsMatrixWithCustomBounds(
     ROMol &mol, const python::object &customBoundsMatrix,
     bool set15bounds = true, bool scaleVDW = false,
     bool doTriangleSmoothing = true, bool useMacrocycle14config = false,
-    DGeomHelpers::EmbedFF embedForceField = DGeomHelpers::EmbedFF::UFF) {
+    DGeomHelpers::EmbedFF embedForceField = DGeomHelpers::EmbedFF::MMFF,
+    bool scaleToCSD = false) {
   auto [nrows, sdata] = pyArrayToMatrix(customBoundsMatrix);
   unsigned int nats = mol.getNumAtoms();
   if (unsigned(nrows) != nats) {
@@ -242,7 +243,7 @@ PyObject *getMolBoundsMatrixWithCustomBounds(
   auto forceTransAmides = true;
   DGeomHelpers::setTopolBounds(mol, mat, cBoundsMat, set15bounds, scaleVDW,
                                useMacrocycle14config, forceTransAmides,
-                               embedForceField);
+                               embedForceField, scaleToCSD);
   if (doTriangleSmoothing) {
     DistGeom::triangleSmoothBounds(mat);
   }
@@ -731,6 +732,7 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
        python::arg("set15bounds") = true, python::arg("scaleVDW") = false,
        python::arg("doTriangleSmoothing") = true,
        python::arg("useMacrocycle14config") = false,
-       python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::MMFF),
+       python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::MMFF,
+       python::arg("scaleToCSD") = false),
       docString.c_str());
 }

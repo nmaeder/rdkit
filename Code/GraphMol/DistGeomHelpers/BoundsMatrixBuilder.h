@@ -57,7 +57,7 @@ RDKIT_DISTGEOMHELPERS_EXPORT void initBoundsMat(DistGeom::BoundsMatPtr mmat,
 RDKIT_DISTGEOMHELPERS_EXPORT void setTopolBounds(
     const ROMol &mol, DistGeom::BoundsMatPtr mmat, bool set15bounds = true,
     bool scaleVDW = false, bool useMacrocycle14config = false,
-    bool forceTransAmides = true, DGeomHelpers::EmbedFF = EmbedFF::UFF);
+    bool forceTransAmides = true, EmbedFF embedForceField = EmbedFF::UFF);
 
 /*! \overload for marc
  */
@@ -65,7 +65,8 @@ RDKIT_DISTGEOMHELPERS_EXPORT void setTopolBounds(
     const ROMol &mol, DistGeom::BoundsMatPtr mmat,
     DistGeom::BoundsMatPtr customBounds, bool set15bounds = true,
     bool scaleVDW = false, bool useMacrocycle14config = false,
-    bool forceTransAmides = true, DGeomHelpers::EmbedFF = EmbedFF::UFF);
+    bool forceTransAmides = true, EmbedFF embedForceField = EmbedFF::MMFF,
+    bool scaleToCSD = false);
 
 /*! \overload for experimental torsion angle preferences
  */
@@ -74,7 +75,7 @@ RDKIT_DISTGEOMHELPERS_EXPORT void setTopolBounds(
     std::vector<std::pair<int, int>> &bonds,
     std::vector<std::vector<int>> &angles, bool set15bounds = true,
     bool scaleVDW = false, bool useMacrocycle14config = false,
-    bool forceTransAmides = true, DGeomHelpers::EmbedFF = EmbedFF::UFF);
+    bool forceTransAmides = true, EmbedFF embedForceField = EmbedFF::UFF);
 
 //! generate the vectors of bonds and angles used by (ET)KDG
 RDKIT_DISTGEOMHELPERS_EXPORT void collectBondsAndAngles(
