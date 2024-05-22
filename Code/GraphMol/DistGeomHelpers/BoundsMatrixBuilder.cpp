@@ -216,10 +216,10 @@ namespace Details {
  * params.
  */
 std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
-  auto [p, s] = UFF::getAtomTypes(mol);
-  CHECK_INVARIANT(p.size() == mol.getNumAtoms(),
+  auto [parameters, success] = UFF::getAtomTypes(mol);
+  CHECK_INVARIANT(parameters.size() == mol.getNumAtoms(),
                   "parameter vector size mismatch");
-  return std::make_pair(s, p);
+  return std::make_pair(success, parameters);
 }
 
 /** Get MMFF Atom Type Parameters.
@@ -230,27 +230,27 @@ std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol) {
  */
 std::pair<bool, MMFF::MMFFMolProperties> check12MMFF(const ROMol &mol) {
   ROMol molCopy(mol);
-  auto p = MMFF::MMFFMolProperties(molCopy);
-  return std::make_pair(p.isValid(), p);
+  auto parameters = MMFF::MMFFMolProperties(molCopy);
+  return std::make_pair(parameters.isValid(), parameters);
 }
 
 /** Calculate bond UFF bond length, return -1000 if not possible.
  *
  * @param mol Owning molecule of bond
  * @param bond Bond to get length for
- * @param params UFF Atom Type Parameters for mol
+ * @param parameters UFF Atom Type Parameters for mol
  * @param begId Idx of first bond atom in mol
  * @param endId Idx of second bond atom in mol
  * @return length of bond if possible, else -1000.
  */
 double calc12UFFBounds(const ROMol &mol, Bond *const bond,
-                       UFF::AtomicParamVect params, unsigned int begId,
+                       UFF::AtomicParamVect parameters, unsigned int begId,
                        unsigned int endId) {
   RDUNUSED_PARAM(mol);
-  auto bOrder = bond->getBondTypeAsDouble();
-  return (params[begId] && params[endId] && bOrder > 0)
+  auto bondOrder = bond->getBondTypeAsDouble();
+  return (parameters[begId] && parameters[endId] && bondOrder > 0)
              ? ForceFields::UFF::Utils::calcBondRestLength(
-                   bOrder, params[begId], params[endId])
+                   bondOrder, parameters[begId], parameters[endId])
              : double(-1000);
 }
 
@@ -258,19 +258,19 @@ double calc12UFFBounds(const ROMol &mol, Bond *const bond,
  *
  * @param mol Owning molecule of bond
  * @param bond Bond to get length for
- * @param params MMFF Atom Type Parameters for mol
+ * @param parameters MMFF Atom Type Parameters for mol
  * @param begId Idx of first bond atom in mol
  * @param endId Idx of second bond atom in mol
  * @return length of bond if possible, else -1000.
  */
 double calc12MMFFBounds(const ROMol &mol, Bond *const bond,
-                        MMFF::MMFFMolProperties params, unsigned int begId,
+                        MMFF::MMFFMolProperties parameters, unsigned int begId,
                         unsigned int endId) {
-  unsigned int bOrder = bond->getBondType();
-  MMFF::MMFFBond bProp;
-  auto bValid =
-      params.getMMFFBondStretchParams(mol, begId, endId, bOrder, bProp);
-  return (bValid) ? bProp.r0 : double(-1000);
+  unsigned int bondOrder = bond->getBondType();
+  MMFF::MMFFBond bondProperties;
+  auto bondValid = parameters.getMMFFBondStretchParams(
+      mol, begId, endId, bondOrder, bondProperties);
+  return (bondValid) ? bondProperties.r0 : double(-1000);
 }
 }  // namespace Details
 
@@ -1841,9 +1841,8 @@ void initBoundsMat(DistGeom::BoundsMatPtr mmat, double defaultMin,
 
 namespace Details {
 template <typename checkFunc, typename calcFunc>
-bool setNonFallback1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
-                        ComputedData &accumData, checkFunc checkF,
-                        calcFunc calcF) {
+bool set1213(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
+             ComputedData &accumData, checkFunc checkF, calcFunc calcF) {
   auto [success, params] =
       set12Bounds(mol, mmat, accumData, checkF, calcF, false);
   if (!success) {
@@ -1879,7 +1878,7 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
 
   bool embeddSuccesfull = false;
   if (embedForceField == EmbedFF::MMFF) {
-    embeddSuccesfull = Details::setNonFallback1213(
+    embeddSuccesfull = Details::set1213(
         mol, mmat, accumData, Details::check12MMFF, Details::calc12MMFFBounds);
   }
   if (!embeddSuccesfull) {
@@ -1924,7 +1923,7 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
 
   bool embeddSuccesfull = false;
   if (embedForceField == EmbedFF::MMFF) {
-    embeddSuccesfull = Details::setNonFallback1213(
+    embeddSuccesfull = Details::set1213(
         mol, mmat, accumData, Details::check12MMFF, Details::calc12MMFFBounds);
   }
   if (!embeddSuccesfull) {
@@ -2008,7 +2007,7 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
 
   bool embeddSuccesfull = false;
   if (embedForceField == EmbedFF::MMFF) {
-    embeddSuccesfull = Details::setNonFallback1213(
+    embeddSuccesfull = Details::set1213(
         mol, mmat, accumData, Details::check12MMFF, Details::calc12MMFFBounds);
   }
   if (!embeddSuccesfull) {
