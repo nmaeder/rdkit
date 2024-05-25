@@ -321,15 +321,17 @@ auto set12Bounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
       if (customBounds) {
         auto lb = customBounds->getLowerBound(begId, endId);
         auto ub = customBounds->getUpperBound(begId, endId);
-        if (lb == 0.0 || ub == 1000.0) {
+        if (lb <= 0.01 || ub >= 999.9) {
           accumData.bondLengths[bond->getIdx()] = bl;
           mmat->setUpperBound(begId, endId, bl + extraSquish + DIST12_DELTA);
           mmat->setLowerBound(begId, endId, bl - extraSquish - DIST12_DELTA);
         }
-        bl = (lb + ub) / 2.0;
-        accumData.bondLengths[bond->getIdx()] = bl;
-        mmat->setLowerBound(begId, endId, lb);
-        mmat->setUpperBound(begId, endId, ub);
+        else {
+          bl = (lb + ub) / 2.0;
+          accumData.bondLengths[bond->getIdx()] = bl;
+          mmat->setLowerBound(begId, endId, lb);
+          mmat->setUpperBound(begId, endId, ub);
+        }
       } else {
         accumData.bondLengths[bond->getIdx()] = bl;
         mmat->setUpperBound(begId, endId, bl + extraSquish + DIST12_DELTA);

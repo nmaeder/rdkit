@@ -393,8 +393,9 @@ ForceFields::ForceField *construct3DForceField(
       auto [i, j] = key;
       double l = mmat.getLowerBound(i, j);
       double u = mmat.getUpperBound(i, j);
+      double dist = (l + u) / 2.0;
       auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
-          field, i, j, l, u, value);
+          field, i, j, dist, dist, value);
       field->contribs().push_back(ForceFields::ContribPtr(contrib));
     }
   }
