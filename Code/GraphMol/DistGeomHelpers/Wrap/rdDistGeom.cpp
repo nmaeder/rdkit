@@ -635,7 +635,10 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
           &PyEmbedParameters::symmetrizeConjugatedTerminalGroupsForPruning,
           "symmetrize terminal conjugated groups for RMSD pruning")
       .def("SetCoordMap", &PyEmbedParameters::setCoordMap, python::args("self"),
-           "sets the coordmap to be used");
+           "sets the coordmap to be used")
+      .def_readwrite(
+          "extraMinimizeOnBounds", &PyEmbedParameters::extraMinimizeOnBounds,
+          "Whether to do an extra minimization on the boudns matrix at the end of the embedding.");
 
   docString =
       "Use distance geometry to obtain multiple sets of \n\

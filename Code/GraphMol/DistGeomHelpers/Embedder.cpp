@@ -15,6 +15,7 @@
 #include <DistGeom/ChiralViolationContrib.h>
 #include "BoundsMatrixBuilder.h"
 #include <ForceField/ForceField.h>
+#include <ForceField/MMFF/DistanceConstraint.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/Atom.h>
 #include <GraphMol/AtomIterators.h>
@@ -115,6 +116,7 @@ const EmbedParameters KDG(0,             // maxIterations
                           300,           // numMinimizationSteps
                           nullptr,       // CPCI
                           nullptr,       // customKConstraintAtomIndices
+                          false,         // extraMinimizationOnBounds
                           nullptr        // callback
 );
 
@@ -147,6 +149,7 @@ const EmbedParameters ETDG(0,             // maxIterations
                            300,           // numMinimizationSteps
                            nullptr,       // CPCI
                            nullptr,       // customKConstraintAtomIndices
+                           false,         // extraMinimizationOnBounds
                            nullptr        // callback
 );
 //! Parameters corresponding to Sereina Riniker's ETKDG approach
@@ -178,6 +181,7 @@ const EmbedParameters ETKDG(0,             // maxIterations
                             300,           // numMinimizationSteps
                             nullptr,       // CPCI
                             nullptr,       // customKConstraintAtomIndices
+                            false,         // extraMinimizationOnBounds
                             nullptr        // callback
 );
 
@@ -210,6 +214,7 @@ const EmbedParameters ETKDGv2(0,             // maxIterations
                               300,           // numMinimizationSteps
                               nullptr,       // CPCI
                               nullptr,       // customKConstraintAtomIndices
+                              false,         // extraMinimizationOnBounds
                               nullptr        // callback
 );
 
@@ -243,6 +248,7 @@ const EmbedParameters ETKDGv3(0,             // maxIterations
                               300,           // numMinimizationSteps
                               nullptr,       // CPCI
                               nullptr,       // customKConstraintAtomIndices
+                              false,         // extraMinimizationOnBounds
                               nullptr        // callback
 );
 
@@ -276,6 +282,7 @@ const EmbedParameters srETKDGv3(0,             // maxIterations
                                 300,           // numMinimizationSteps
                                 nullptr,       // CPCI
                                 nullptr,       // customKConstraintAtomIndices
+                                false,         // extraMinimizationOnBounds
                                 nullptr        // callback
 );
 
@@ -690,6 +697,26 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
   return planar;
 }
 
+bool minimizeOnBounds(RDGeom::PointPtrVect &positions,
+                      const detail::EmbedArgs &eargs,
+                      const EmbedParameters &embedParams) {
+  auto forceField = std::make_unique<ForceFields::ForceField>();
+  for (auto position : positions) {
+    forceField->positions().push_back(position);
+  }
+  for (auto const &[atomIndices, constraintForce] :
+       *embedParams.customKConstraintAtomIndices) {
+    auto [atomIndex1, atomIndex2] = atomIndices;
+    auto l = eargs.mmat->getLowerBound(atomIndex1, atomIndex2);
+    auto u = eargs.mmat->getUpperBound(atomIndex1, atomIndex2);
+    auto *contrib = new ForceFields::MMFF::DistanceConstraintContrib(
+        forceField.get(), atomIndex1, atomIndex2, l, u, constraintForce);
+    forceField->contribs().push_back(ForceFields::ContribPtr(contrib));
+  }
+  forceField->initialize();
+  return forceField->minimize(1000, embedParams.optimizerForceTol);
+}
+
 bool doubleBondGeometryChecks(const RDGeom::PointPtrVect &positions,
                               const detail::EmbedArgs &eargs, EmbedParameters &,
                               double linearTol = 1e-3) {
@@ -939,6 +966,23 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           }
         }
       }
+
+      // Marc's special minimization
+
+      if (gotCoords && embedParams.extraMinimizeOnBounds &&
+          embedParams.customKConstraintAtomIndices) {
+        gotCoords =
+            EmbeddingOps::minimizeOnBounds(*positions, eargs, embedParams);
+        if (!gotCoords) {
+          if (embedParams.trackFailures) {
+#ifdef RDK_BUILD_THREADSAFE_SSS
+            std::lock_guard<std::mutex> lock(GetFailMutex());
+#endif
+            embedParams.failures[EmbedFailureCauses::ETK_MINIMIZATION]++;
+          }
+        }
+      }
+
       if (gotCoords) {
         gotCoords = EmbeddingOps::doubleBondGeometryChecks(*positions, eargs,
                                                            embedParams);

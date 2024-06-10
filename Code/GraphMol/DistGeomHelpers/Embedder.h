@@ -36,7 +36,8 @@ enum EmbedFailureCauses {
   LINEAR_DOUBLE_BOND = 8,
   BAD_DOUBLE_BOND_STEREO = 9,
   CHECK_CHIRAL_CENTERS2 = 10,
-  END_OF_ENUM = 11,
+  ADDITIONAL_BOUNDS_MIN = 11,
+  END_OF_ENUM = 12,
 };
 
 /**
@@ -165,6 +166,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   bool symmetrizeConjugatedTerminalGroupsForPruning{true};
   EmbedFF embedForceField{EmbedFF::UFF};
   unsigned int numMinimizationSteps{300};
+  bool extraMinimizeOnBounds{false};
 
   EmbedParameters()
       : boundsMat(nullptr),
@@ -189,6 +191,7 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
           CPCI = nullptr,
       std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           customKConstraintAtomIndices = nullptr,
+      bool extraMinimizeOnBounds = false,
       void (*callback)(unsigned int) = nullptr)
       : maxIterations(maxIterations),
         numThreads(numThreads),
@@ -218,7 +221,8 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
         customKConstraintAtomIndices(std::move(customKConstraintAtomIndices)),
         callback(callback),
         embedForceField(embedForceField),
-        numMinimizationSteps(numMinimizationSteps) {}
+        numMinimizationSteps(numMinimizationSteps),
+        extraMinimizeOnBounds(extraMinimizeOnBounds) {}
 };
 
 //! update parameters from a JSON string
