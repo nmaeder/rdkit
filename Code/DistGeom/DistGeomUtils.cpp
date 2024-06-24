@@ -309,12 +309,6 @@ ForceFields::ForceField *construct3DForceField(
           static_cast<bool>(improperAtom[5]), oobForceScalingFactor);
       field->contribs().push_back(ForceFields::ContribPtr(contrib));
       dont13Constrain[improperAtom[n[1]]] = 1;
-      //   std::cout << improperAtom[n[0]] << ", " << improperAtom[n[1]] <<
-      // ", "
-      //             << improperAtom[n[2]] << ", " << improperAtom[n[3]]
-      //             << std::endl;
-      //   std::cout << "dontconstrain constrain: " << improperAtom[n[1]]
-      //             << std::endl;
     }
   }
 
@@ -443,8 +437,8 @@ ForceFields::ForceField *constructPlain3DForceField(
     field->contribs().push_back(ForceFields::ContribPtr(contrib));
   }  // torsion constraints
 
-  double fdist = 100.0;  // force constant
-
+  constexpr double knownDistanceConstraintForce = 100.0;
+  double fdist = knownDistanceConstraintForce;  // force constant
   // 1,2 distance constraints
   for (const auto &bnd : etkdgDetails.bonds) {
     unsigned int i = bnd.first;
@@ -480,7 +474,6 @@ ForceFields::ForceField *constructPlain3DForceField(
   }
 
   // minimum distance for all other atom pairs
-  constexpr double knownDistanceConstraintForce = 100.0;
   for (unsigned int i = 1; i < N; ++i) {
     for (unsigned int j = 0; j < i; ++j) {
       if (!atomPairs[j * N + i]) {
