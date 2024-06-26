@@ -80,6 +80,8 @@ bool computeInitialCoords(const RDNumeric::SymmMatrix<double> &distMat,
                           RDGeom::PointPtrVect &positions,
                           RDKit::double_source_type &rng, bool randNegEig,
                           unsigned int numZeroFail) {
+                            // RDUNUSED_PARAM(rng);
+
   unsigned int N = distMat.numRows();
   unsigned int nPt = positions.size();
   CHECK_INVARIANT(nPt == N, "Size mismatch");
@@ -124,7 +126,6 @@ bool computeInitialCoords(const RDNumeric::SymmMatrix<double> &distMat,
   unsigned int nEigs = (dim < N) ? dim : N;
   RDNumeric::EigenSolvers::powerEigenSolver(nEigs, T, eigVals, eigVecs,
                                             (int)(sumSqD2 * N));
-
   double *eigData = eigVals.getData();
   bool foundNeg = false;
   unsigned int zeroEigs = 0;
@@ -153,6 +154,7 @@ bool computeInitialCoords(const RDNumeric::SymmMatrix<double> &distMat,
         (*pt)[j] = eigData[j] * eigVecs.getVal(j, i);
       } else {
         // std::cerr<<"!!! "<<i<<"-"<<j<<": "<<eigData[j]<<std::endl;
+        // (*pt)[j] *= -1;
         (*pt)[j] = 1.0 - 2.0 * rng();
       }
     }

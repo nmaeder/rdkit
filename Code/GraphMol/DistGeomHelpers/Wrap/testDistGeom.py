@@ -95,7 +95,6 @@ def computeChiralVol(pt1, pt2, pt3, pt4):
 
 
 class TestCase(unittest.TestCase):
-
     def setUp(self):
         pass
 
@@ -250,34 +249,35 @@ class TestCase(unittest.TestCase):
             "OCC(O)C(O)C(Cn1c2c(cc(C)c(C)c2)nc-2c(=O)[nH]c(=O)nc12)O",
         ]
 
-    nconfs = []
-    expected = [3, 2, 7, 6, 3, 3]
-    for smi in smiles:
-      mol = Chem.MolFromSmiles(smi)
-      cids = rdDistGeom.EmbedMultipleConfs(mol, 50, maxAttempts=30, randomSeed=100,
-                                           pruneRmsThresh=1.5)
-      nconfs.append(len(cids))
+        nconfs = []
+        expected = [3, 2, 7, 6, 3, 3]
+        for smi in smiles:
+            mol = Chem.MolFromSmiles(smi)
+            cids = rdDistGeom.EmbedMultipleConfs(
+                mol, 50, maxAttempts=30, randomSeed=100, pruneRmsThresh=1.5
+            )
+            nconfs.append(len(cids))
 
-        d = [abs(x - y) for x, y in zip(expected, nconfs)]
-        # print(nconfs)
-        self.assertTrue(max(d) <= 1)
+            d = [abs(x - y) for x, y in zip(expected, nconfs)]
+            # print(nconfs)
+            self.assertTrue(max(d) <= 1)
 
-    # previous settings
-    params = rdDistGeom.ETKDG()
-    params.randomSeed = 100
-    params.maxIterations = 30
-    params.pruneRmsThresh = 1.5
-    params.useSymmetryForPruning = False
-    nconfs = []
-    expected = [4, 5, 5, 7, 5, 3]
-    for smi in smiles:
-      mol = Chem.MolFromSmiles(smi)
-      cids = rdDistGeom.EmbedMultipleConfs(mol, 50, params)
-      nconfs.append(len(cids))
+        # previous settings
+        params = rdDistGeom.ETKDG()
+        params.randomSeed = 100
+        params.maxIterations = 30
+        params.pruneRmsThresh = 1.5
+        params.useSymmetryForPruning = False
+        nconfs = []
+        expected = [4, 5, 5, 7, 5, 3]
+        for smi in smiles:
+            mol = Chem.MolFromSmiles(smi)
+            cids = rdDistGeom.EmbedMultipleConfs(mol, 50, params)
+            nconfs.append(len(cids))
 
-        d = [abs(x - y) for x, y in zip(expected, nconfs)]
-        # print(nconfs)
-        self.assertTrue(max(d) <= 1)
+            d = [abs(x - y) for x, y in zip(expected, nconfs)]
+            # print(nconfs)
+            self.assertTrue(max(d) <= 1)
 
     def test6Chirality(self):
         # turn on chirality and we should get chiral volume that is pretty consistent and
@@ -617,7 +617,6 @@ class TestCase(unittest.TestCase):
 
         nonDeterministic = False
         for confIdx in range(firstMol.GetNumConformers()):
-
             firstConf = firstMol.GetConformer(confIdx)
             secondConf = secondMol.GetConformer(confIdx)
 
@@ -822,17 +821,17 @@ class TestCase(unittest.TestCase):
         self.assertEqual(list(ts[0]["signs"]), [1, 1, 1, 1, 1, 1])
         self.assertEqual(list(ts[0]["atomIndices"]), [0, 1, 2, 3])
 
-  def testTrackFailures(self):
-    params = AllChem.ETKDGv3()
-    params.trackFailures = True
-    params.maxIterations = 50
-    params.randomSeed = 42
-    mol = Chem.MolFromSmiles('O=c2cc3CCc1ccc(cc1Br)CCc2c(O)c3=O')
-    mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol, params)
-    cnts = params.GetFailureCounts()
-    self.assertEqual(cnts[AllChem.EmbedFailureCauses.INITIAL_COORDS], 2)
-    self.assertEqual(cnts[AllChem.EmbedFailureCauses.ETK_MINIMIZATION], 5)
+    def testTrackFailures(self):
+        params = AllChem.ETKDGv3()
+        params.trackFailures = True
+        params.maxIterations = 50
+        params.randomSeed = 42
+        mol = Chem.MolFromSmiles("O=c2cc3CCc1ccc(cc1Br)CCc2c(O)c3=O")
+        mol = Chem.AddHs(mol)
+        AllChem.EmbedMolecule(mol, params)
+        cnts = params.GetFailureCounts()
+        self.assertEqual(cnts[AllChem.EmbedFailureCauses.INITIAL_COORDS], 2)
+        self.assertEqual(cnts[AllChem.EmbedFailureCauses.ETK_MINIMIZATION], 5)
 
     def testCoordMap(self):
         mol = Chem.AddHs(Chem.MolFromSmiles("OCCC"))
