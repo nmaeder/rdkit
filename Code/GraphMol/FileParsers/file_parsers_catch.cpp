@@ -5710,6 +5710,15 @@ NO_CHARGES
 #       End of record)MOL2";
     std::unique_ptr<RWMol> m(Mol2BlockToMol(mol2));
     REQUIRE(m);
+    CHECK(m->getAtomWithIdx(10)->getAtomicNum() == 15);
+    CHECK(m->getAtomWithIdx(10)->getFormalCharge() == 0);
+    CHECK(m->getAtomWithIdx(11)->getFormalCharge() == 0);
+    CHECK(m->getBondBetweenAtoms(10, 11)->getBondType() == Bond::DOUBLE);
+    CHECK(m->getAtomWithIdx(12)->getFormalCharge() == -1);
+    CHECK(m->getBondBetweenAtoms(10, 12)->getBondType() == Bond::SINGLE);
+    // CHECK: is this correct? Should both of the Os be negative or just one?
+    CHECK(m->getAtomWithIdx(13)->getFormalCharge() == -1);
+    CHECK(m->getBondBetweenAtoms(10, 13)->getBondType() == Bond::SINGLE);
   }
 }
 
@@ -7275,5 +7284,33 @@ M  END
     CHECK(m2->getNumBonds() == 8);
     CHECK(m2->getBondWithIdx(3)->getBondType() == Bond::ZERO);
     CHECK(m2->getBondWithIdx(7)->getBondType() == Bond::ZERO);
+  }
+}
+
+TEST_CASE("MolToV2KMolBlock") {
+  SECTION("basics") {
+    auto m = "[NH3]->[Pt]"_smiles;
+    REQUIRE(m);
+    // by default we get a V3K block since there is a dative bond present
+    auto mb = MolToMolBlock(*m);
+    CHECK(mb.find("V3000") != std::string::npos);
+    CHECK(mb.find("V30 1 9 1 2") != std::string::npos);
+    // but we can ask for a V2K block
+    mb = MolToV2KMolBlock(*m);
+    CHECK(mb.find("V2000") != std::string::npos);
+    CHECK(mb.find("  1  2  9  0") != std::string::npos);
+  }
+  SECTION("limits") {
+    // we won't test SGroups since creating 1000 of them is a bit much
+    std::vector<std::string> smileses = {
+        std::string(1000, 'C'),
+        "C1CC2" + std::string(996, 'C') + "12",
+    };
+    for (const auto &smi : smileses) {
+      INFO(smi);
+      auto m = SmilesToMol(smi);
+      REQUIRE(m);
+      CHECK_THROWS_AS(MolToV2KMolBlock(*m), ValueErrorException);
+    }
   }
 }
