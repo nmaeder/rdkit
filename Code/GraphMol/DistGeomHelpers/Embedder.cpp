@@ -40,7 +40,6 @@
 #include <iostream>
 #include <fstream>
 
-
 #ifdef RDK_BUILD_THREADSAFE_SSS
 #include <future>
 #include <mutex>
@@ -460,9 +459,10 @@ bool generateInitialCoords(RDGeom::PointPtrVect *positions,
     double largestDistance =
         DistGeom::pickRandomDistMat(*eargs.mmat, distMat, *rng);
     std::ofstream file;
-    file.open("/localhome/maedern/code/exterminator/bond_length_violations/random.csv");
+    file.open(
+        "/localhome/maedern/code/exterminator/bond_length_violations/random.csv");
     file << distMat;
-    file.close();    
+    file.close();
     RDUNUSED_PARAM(largestDistance);
     gotCoords = DistGeom::computeInitialCoords(distMat, *positions, *rng,
                                                embedParams.randNegEig,
@@ -510,10 +510,17 @@ bool firstMinimization(RDGeom::PointPtrVect *positions,
     }
   }
   field->initialize();
+  unsigned int count = 1;
+  unsigned int steps = 400;
   if (field->calcEnergy() > ERROR_TOL) {
     int needMore = 1;
+
     while (needMore) {
-      needMore = field->minimize(400, embedParams.optimizerForceTol);
+      needMore = field->minimize(steps, embedParams.optimizerForceTol);
+      std::cerr << field->calcEnergy() << std::endl;
+      std::cerr << "after " << count * steps
+                << " attempts. need more: " << needMore << std::endl;
+      count++;
     }
   }
   std::vector<double> e_contribs;
@@ -682,7 +689,7 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
                 << eargs.etkdgDetails->improperAtoms.size() * planarityTolerance
                 << std::endl;
 #endif
-      planar = false;
+      planar = true;
     }
   }
 
@@ -831,12 +838,15 @@ bool finalChiralChecks(RDGeom::PointPtrVect *positions,
   return true;
 }
 
-void printDistMat(RDGeom::PointPtrVect *positions, RDNumeric::DoubleSymmMatrix distMat, bool fourD, std::string filename){
+void printDistMat(RDGeom::PointPtrVect *positions,
+                  RDNumeric::DoubleSymmMatrix distMat, bool fourD,
+                  std::string filename) {
   double xi, xj, yi, yj, zi, zj, hi, hj, dist;
   auto N = distMat.numRows();
   fourD = positions->at(0)->dimension() == 4;
-  // std::cout<<"number of dimenstions: "<<positions->at(0)->dimension()<<std::endl;
-  // std::cout<<"is fourd: " << fourD<<std::endl;
+  // std::cout<<"number of dimenstions:
+  // "<<positions->at(0)->dimension()<<std::endl; std::cout<<"is fourd: " <<
+  // fourD<<std::endl;
   for (unsigned int i = 1; i < N; i++) {
     for (unsigned int j = 0; j < i; j++) {
       xi = (*positions->at(i))[0];
@@ -845,15 +855,16 @@ void printDistMat(RDGeom::PointPtrVect *positions, RDNumeric::DoubleSymmMatrix d
       yj = (*positions->at(j))[1];
       zi = (*positions->at(i))[2];
       zj = (*positions->at(j))[2];
-      if (fourD){
+      if (fourD) {
         hi = (*positions->at(i))[3];
         hj = (*positions->at(j))[3];
-        dist = pow( pow(xi-xj, 2) + pow(yi-yj, 2) + pow(zi-zj, 2) + pow(hi-hj, 2), 0.5   );
+        dist = pow(pow(xi - xj, 2) + pow(yi - yj, 2) + pow(zi - zj, 2) +
+                       pow(hi - hj, 2),
+                   0.5);
+      } else {
+        dist = pow(pow(xi - xj, 2) + pow(yi - yj, 2) + pow(zi - zj, 2), 0.5);
       }
-      else{
-        dist = pow( pow(xi-xj, 2) + pow(yi-yj, 2) + pow(zi-zj, 2) , 0.5   );
-      }
-      distMat.setVal(i,j,dist);
+      distMat.setVal(i, j, dist);
     }
   }
   // printf("4ddist: %8f\nd3dist: %8f\n", d4dist, d3dist);
@@ -910,7 +921,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
         embedParams.failures[EmbedFailureCauses::INITIAL_COORDS]++;
       }
     } else {
-      printDistMat(positions, distMat, false, "/localhome/maedern/code/exterminator/bond_length_violations/initial.csv");
+      printDistMat(
+          positions, distMat, false,
+          "/localhome/maedern/code/exterminator/bond_length_violations/initial.csv");
       gotCoords =
           EmbeddingOps::firstMinimization(positions, eargs, embedParams);
       if (!gotCoords) {
@@ -921,7 +934,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           embedParams.failures[EmbedFailureCauses::FIRST_MINIMIZATION]++;
         }
       } else {
-        printDistMat(positions, distMat, true, "/localhome/maedern/code/exterminator/bond_length_violations/first.csv");
+        printDistMat(
+            positions, distMat, true,
+            "/localhome/maedern/code/exterminator/bond_length_violations/first.csv");
         gotCoords = EmbeddingOps::checkTetrahedralCenters(positions, eargs,
                                                           embedParams);
         if (!gotCoords) {
@@ -934,7 +949,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           }
         }
       }
-      printDistMat(positions, distMat, true, "/localhome/maedern/code/exterminator/bond_length_violations/tetra.csv");
+      printDistMat(
+          positions, distMat, true,
+          "/localhome/maedern/code/exterminator/bond_length_violations/tetra.csv");
       // Check if any of our chiral centers are badly out of whack.
       if (gotCoords && embedParams.enforceChirality &&
           eargs.chiralCenters->size() > 0) {
@@ -949,7 +966,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           }
         }
       }
-      printDistMat(positions, distMat, true, "/localhome/maedern/code/exterminator/bond_length_violations/chiral.csv");
+      printDistMat(
+          positions, distMat, true,
+          "/localhome/maedern/code/exterminator/bond_length_violations/chiral.csv");
       // redo the minimization if we have a chiral center
       // or have started from random coords.
       if (gotCoords &&
@@ -966,7 +985,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           }
         }
       }
-      printDistMat(positions, distMat, false, "/localhome/maedern/code/exterminator/bond_length_violations/fourth.csv");
+      printDistMat(
+          positions, distMat, false,
+          "/localhome/maedern/code/exterminator/bond_length_violations/fourth.csv");
 
       // (ET)(K)DG
       if (gotCoords && (embedParams.useExpTorsionAnglePrefs ||
@@ -982,7 +1003,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           }
         }
       }
-      printDistMat(positions, distMat, false,  "/localhome/maedern/code/exterminator/bond_length_violations/etk.csv");
+      printDistMat(
+          positions, distMat, false,
+          "/localhome/maedern/code/exterminator/bond_length_violations/etk.csv");
       if (gotCoords) {
         gotCoords = EmbeddingOps::doubleBondGeometryChecks(*positions, eargs,
                                                            embedParams);
@@ -1012,7 +1035,9 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           }
         }
       }
-      printDistMat(positions, distMat, false, "/localhome/maedern/code/exterminator/bond_length_violations/final.csv");
+      printDistMat(
+          positions, distMat, false,
+          "/localhome/maedern/code/exterminator/bond_length_violations/final.csv");
     }
 
   }  // while
