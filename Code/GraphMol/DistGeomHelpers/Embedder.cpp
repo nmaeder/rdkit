@@ -517,9 +517,9 @@ bool firstMinimization(RDGeom::PointPtrVect *positions,
 
     while (needMore) {
       needMore = field->minimize(steps, embedParams.optimizerForceTol);
-      std::cerr << field->calcEnergy() << std::endl;
-      std::cerr << "after " << count * steps
-                << " attempts. need more: " << needMore << std::endl;
+      // std::cerr << field->calcEnergy() << std::endl;
+      // std::cerr << "after " << count * steps
+      //           << " attempts. need more: " << needMore << std::endl;
       count++;
     }
   }
