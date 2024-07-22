@@ -136,8 +136,7 @@ RDKIT_DISTGEOMETRY_EXPORT ForceFields::ForceField *constructForceField(
 */
 RDKIT_DISTGEOMETRY_EXPORT ForceFields::ForceField *construct3DForceField(
     const BoundsMatrix &mmat, RDGeom::Point3DPtrVect &positions,
-    const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
-    bool useKCustoms = false);
+    const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails);
 //! Force field with experimental torsion angle preferences and 1-2/1-3 distance
 /// constraints, as well as atom pairwise Columbic interactions
 /*!

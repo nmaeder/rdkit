@@ -1,5 +1,5 @@
 //
-//  Copyright (C) 2004-2019 Greg Landrum and Rational Discovery LLC
+//  Copyright (C) 2004-2024 Greg Landrum and other RDKit contributors
 //
 //   @@ All Rights Reserved @@
 //  This file is part of the RDKit.
@@ -9,9 +9,9 @@
 //
 #include "BoundsMatrix.h"
 #include "DistGeomUtils.h"
-#include "DistViolationContrib.h"
-#include "ChiralViolationContrib.h"
-#include "FourthDimContrib.h"
+#include "DistViolationContribs.h"
+#include "ChiralViolationContribs.h"
+#include "FourthDimContribs.h"
 #include <Numerics/Matrix.h>
 #include <Numerics/SymmMatrix.h>
 #include <Numerics/Vector.h>
@@ -24,7 +24,6 @@
 #include <ForceField/UFF/Inversion.h>
 #include <GraphMol/ForceFieldHelpers/CrystalFF/TorsionPreferences.h>
 #include <GraphMol/ForceFieldHelpers/CrystalFF/TorsionAngleM6.h>
-#include <GraphMol/DistGeomHelpers/Embedder.h>
 #include <boost/dynamic_bitset.hpp>
 #include <ForceField/MMFF/Nonbonded.h>
 
@@ -80,8 +79,6 @@ bool computeInitialCoords(const RDNumeric::SymmMatrix<double> &distMat,
                           RDGeom::PointPtrVect &positions,
                           RDKit::double_source_type &rng, bool randNegEig,
                           unsigned int numZeroFail) {
-  // RDUNUSED_PARAM(rng);
-
   unsigned int N = distMat.numRows();
   unsigned int nPt = positions.size();
   CHECK_INVARIANT(nPt == N, "Size mismatch");
@@ -126,6 +123,7 @@ bool computeInitialCoords(const RDNumeric::SymmMatrix<double> &distMat,
   unsigned int nEigs = (dim < N) ? dim : N;
   RDNumeric::EigenSolvers::powerEigenSolver(nEigs, T, eigVals, eigVecs,
                                             (int)(sumSqD2 * N));
+
   double *eigData = eigVals.getData();
   bool foundNeg = false;
   unsigned int zeroEigs = 0;
@@ -154,7 +152,6 @@ bool computeInitialCoords(const RDNumeric::SymmMatrix<double> &distMat,
         (*pt)[j] = eigData[j] * eigVecs.getVal(j, i);
       } else {
         // std::cerr<<"!!! "<<i<<"-"<<j<<": "<<eigData[j]<<std::endl;
-        // (*pt)[j] *= -1;
         (*pt)[j] = 1.0 - 2.0 * rng();
       }
     }
@@ -193,6 +190,8 @@ ForceFields::ForceField *constructForceField(
   for (unsigned int i = 0; i < N; i++) {
     field->positions().push_back(positions[i]);
   }
+
+  auto contrib = new DistViolationContribs(field);
   for (unsigned int i = 1; i < N; i++) {
     for (unsigned int j = 0; j < i; j++) {
       if (fixedPts != nullptr && (*fixedPts)[i] && (*fixedPts)[j]) {
@@ -214,26 +213,39 @@ ForceFields::ForceField *constructForceField(
         includeIt = true;
       }
       if (includeIt) {
-        auto *contrib = new DistViolationContrib(field, i, j, u, l, w);
-        field->contribs().push_back(ForceFields::ContribPtr(contrib));
+        contrib->addContrib(i, j, u, l, w);
       }
     }
   }
-
+  if (!contrib->empty()) {
+    field->contribs().push_back(ForceFields::ContribPtr(contrib));
+  } else {
+    delete contrib;
+  }
   // now add chiral constraints
   if (weightChiral > 1.e-8) {
+    auto contrib = new ChiralViolationContribs(field);
+
     for (const auto &cset : csets) {
-      auto *contrib =
-          new ChiralViolationContrib(field, cset.get(), weightChiral);
+      contrib->addContrib(cset.get(), weightChiral);
+    }
+    if (!contrib->empty()) {
       field->contribs().push_back(ForceFields::ContribPtr(contrib));
+    } else {
+      delete contrib;
     }
   }
 
   // finally the contribution from the fourth dimension if we need to
   if ((field->dimension() == 4) && (weightFourthDim > 1.e-8)) {
+    auto contrib = new FourthDimContribs(field);
     for (unsigned int i = 0; i < N; i++) {
-      auto *contrib = new FourthDimContrib(field, i, weightFourthDim);
+      contrib->addContrib(i, weightFourthDim);
+    }
+    if (!contrib->empty()) {
       field->contribs().push_back(ForceFields::ContribPtr(contrib));
+    } else {
+      delete contrib;
     }
   }
   return field;
@@ -244,9 +256,7 @@ constexpr double FORCE_12_13 = 100;
 
 ForceFields::ForceField *construct3DForceField(
     const BoundsMatrix &mmat, RDGeom::Point3DPtrVect &positions,
-    const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
-    bool useKCustoms) {
-  RDUNUSED_PARAM(useKCustoms)
+    const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails) {
   unsigned int N = mmat.numRows();
   CHECK_INVARIANT(N == positions.size(), "");
   CHECK_INVARIANT(etkdgDetails.expTorsionAtoms.size() ==
@@ -264,7 +274,6 @@ ForceFields::ForceField *construct3DForceField(
   boost::dynamic_bitset<> dont13Constrain(N);
 
   // torsion constraints
-
   // for (unsigned int t = 0; t < etkdgDetails.expTorsionAtoms.size(); ++t) {
   //   int i = etkdgDetails.expTorsionAtoms[t][0];
   //   int j = etkdgDetails.expTorsionAtoms[t][1];
@@ -282,8 +291,7 @@ ForceFields::ForceField *construct3DForceField(
   //   field->contribs().push_back(ForceFields::ContribPtr(contrib));
   // }  // torsion constraints
 
-  // improper torsions / out - of -      plane bend / inversion
-
+  // improper torsions / out-of-plane bend / inversion
   // double oobForceScalingFactor = 10.0;
   // for (const auto &improperAtom : etkdgDetails.improperAtoms) {
   //   std::vector<int> n(4);
@@ -317,9 +325,8 @@ ForceFields::ForceField *construct3DForceField(
   //   }
   // }
 
-  constexpr double knownDistanceConstraintForce = 100;
+  constexpr double knownDistanceConstraintForce = 100.0;
   double fdist = knownDistanceConstraintForce;  // force constant
-  // constexpr double INCR = 0.01;
   // 1,2 distance constraints
   for (const auto &bnd : etkdgDetails.bonds) {
     unsigned int i = bnd.first;
@@ -353,8 +360,7 @@ ForceFields::ForceField *construct3DForceField(
     //   auto *contrib = new ForceFields::UFF::AngleConstraintContrib(
     //       field, i, j, k, 179.0, 180.0, 1);
     //   field->contribs().push_back(ForceFields::ContribPtr(contrib));
-    // } else
-    // if (!dont13Constrain.test(j)) {
+    // } else if (!dont13Constrain.test(j)) {
     if (true) {
       double d = ((*positions[i]) - (*positions[k])).length();
       double l = d - INCR;
@@ -382,8 +388,6 @@ ForceFields::ForceField *construct3DForceField(
           u += INCR;
           fdist = knownDistanceConstraintForce;
         }
-        std::cerr << etkdgDetails.boundsMatForceScaling << ", " << fdist
-                  << std::endl;
         auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
             field, i, j, l, u, fdist);
         field->contribs().push_back(ForceFields::ContribPtr(contrib));
@@ -448,7 +452,6 @@ ForceFields::ForceField *constructPlain3DForceField(
   // }  // torsion constraints
 
   constexpr double knownDistanceConstraintForce = 100.0;
-  // constexpr double INCR = 0.01;
   double fdist = knownDistanceConstraintForce;  // force constant
   // 1,2 distance constraints
   for (const auto &bnd : etkdgDetails.bonds) {
@@ -496,13 +499,11 @@ ForceFields::ForceField *constructPlain3DForceField(
             etkdgDetails.constrainedAtoms[j]) {
           // we're constrained, so use very tight bounds
           l = u = ((*positions[i]) - (*positions[j])).length();
+
           l -= INCR;
           u += INCR;
           fdist = knownDistanceConstraintForce;
         }
-        std::cerr << etkdgDetails.boundsMatForceScaling << ", " << fdist
-                  << std::endl;
-        // fdist=0;
         auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
             field, i, j, l, u, fdist);
         field->contribs().push_back(ForceFields::ContribPtr(contrib));
@@ -524,8 +525,7 @@ ForceFields::ForceField *construct3DImproperForceField(
   auto *field = new ForceFields::ForceField(positions[0]->dimension());
   field->positions().insert(field->positions().begin(), positions.begin(),
                             positions.end());
-  // RDUNUSED_PARAM(angles);
-  // RDUNUSED_PARAM(improperAtoms);
+
   // improper torsions / out-of-plane bend / inversion
   double oobForceScalingFactor = 10.0;
   for (const auto &improperAtom : improperAtoms) {
