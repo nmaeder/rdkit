@@ -58,9 +58,12 @@ constexpr double ERROR_TOL = 0.00001;
 // conformations but not so sensitive that a bunch of ok conformations get
 // filtered out, which slows down the whole conformation generation process
 constexpr double MAX_MINIMIZED_E_PER_ATOM = 0.05;
-constexpr double MAX_MINIMIZED_E_CONTRIB = 0.20;
 constexpr double MIN_TETRAHEDRAL_CHIRAL_VOL = 0.50;
 constexpr double TETRAHEDRAL_CENTERINVOLUME_TOL = 0.30;
+inline bool haveOppositeSign(double a, double b) {
+  return std::signbit(a) ^ std::signbit(b);
+}
+
 }  // namespace
 
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -115,9 +118,8 @@ const EmbedParameters KDG(0,             // maxIterations
                           EmbedFF::UFF,  // embedForceField
                           300,           // numMinimizationSteps
                           nullptr,       // CPCI
-                          nullptr,       // customKConstraintAtomIndices
-                          false,         // extraMinimizationOnBounds
-                          nullptr        // callback
+                          // nullptr,       // customKConstraintAtomIndices
+                          nullptr  // callback
 );
 
 //! Parameters corresponding to Sereina Riniker's ETDG approach
@@ -149,8 +151,8 @@ const EmbedParameters ETDG(0,             // maxIterations
                            300,           // numMinimizationSteps
                            nullptr,       // CPCI
                            nullptr,       // customKConstraintAtomIndices
-                           false,         // extraMinimizationOnBounds
-                           nullptr        // callback
+                           //  false,         // extraMinimizationOnBounds
+                           nullptr  // callback
 );
 //! Parameters corresponding to Sereina Riniker's ETKDG approach
 const EmbedParameters ETKDG(0,             // maxIterations
@@ -181,8 +183,8 @@ const EmbedParameters ETKDG(0,             // maxIterations
                             300,           // numMinimizationSteps
                             nullptr,       // CPCI
                             nullptr,       // customKConstraintAtomIndices
-                            false,         // extraMinimizationOnBounds
-                            nullptr        // callback
+                            // false,         // extraMinimizationOnBounds
+                            nullptr  // callback
 );
 
 //! Parameters corresponding to Sereina Riniker's ETKDG approach - version 2
@@ -214,8 +216,8 @@ const EmbedParameters ETKDGv2(0,             // maxIterations
                               300,           // numMinimizationSteps
                               nullptr,       // CPCI
                               nullptr,       // customKConstraintAtomIndices
-                              false,         // extraMinimizationOnBounds
-                              nullptr        // callback
+                              // false,         // extraMinimizationOnBounds
+                              nullptr  // callback
 );
 
 //! Parameters corresponding improved ETKDG by Wang, Witek, Landrum and Riniker
@@ -248,8 +250,8 @@ const EmbedParameters ETKDGv3(0,             // maxIterations
                               300,           // numMinimizationSteps
                               nullptr,       // CPCI
                               nullptr,       // customKConstraintAtomIndices
-                              false,         // extraMinimizationOnBounds
-                              nullptr        // callback
+                              // false,         // extraMinimizationOnBounds
+                              nullptr  // callback
 );
 
 //! Parameters corresponding improved ETKDG by Wang, Witek, Landrum and Riniker
@@ -282,8 +284,8 @@ const EmbedParameters srETKDGv3(0,             // maxIterations
                                 300,           // numMinimizationSteps
                                 nullptr,       // CPCI
                                 nullptr,       // customKConstraintAtomIndices
-                                false,         // extraMinimizationOnBounds
-                                nullptr        // callback
+                                // false,         // extraMinimizationOnBounds
+                                nullptr  // callback
 );
 
 namespace detail {
@@ -333,12 +335,21 @@ bool _volumeTest(const DistGeom::ChiralSetPtr &chiralSet,
   RDGeom::Point3D v4 = p0 - p4;
   v4.normalize();
 
+  // be more tolerant of tethrahedral centers that are involved in multiple
+  // small rings
+  double volScale = 1;
+  if (chiralSet->d_structureFlags &
+      static_cast<std::uint64_t>(
+          DistGeom::ChiralSetStructureFlags::IN_FUSED_SMALL_RINGS)) {
+    volScale = 0.25;
+  }
+
   RDGeom::Point3D crossp = v1.crossProduct(v2);
   double vol = crossp.dotProduct(v3);
   if (verbose) {
     std::cerr << "   " << fabs(vol) << std::endl;
   }
-  if (fabs(vol) < MIN_TETRAHEDRAL_CHIRAL_VOL) {
+  if (fabs(vol) < volScale * MIN_TETRAHEDRAL_CHIRAL_VOL) {
     return false;
   }
   crossp = v1.crossProduct(v2);
@@ -346,7 +357,7 @@ bool _volumeTest(const DistGeom::ChiralSetPtr &chiralSet,
   if (verbose) {
     std::cerr << "   " << fabs(vol) << std::endl;
   }
-  if (fabs(vol) < MIN_TETRAHEDRAL_CHIRAL_VOL) {
+  if (fabs(vol) < volScale * MIN_TETRAHEDRAL_CHIRAL_VOL) {
     return false;
   }
   crossp = v1.crossProduct(v3);
@@ -354,7 +365,7 @@ bool _volumeTest(const DistGeom::ChiralSetPtr &chiralSet,
   if (verbose) {
     std::cerr << "   " << fabs(vol) << std::endl;
   }
-  if (fabs(vol) < MIN_TETRAHEDRAL_CHIRAL_VOL) {
+  if (fabs(vol) < volScale * MIN_TETRAHEDRAL_CHIRAL_VOL) {
     return false;
   }
   crossp = v2.crossProduct(v3);
@@ -362,7 +373,7 @@ bool _volumeTest(const DistGeom::ChiralSetPtr &chiralSet,
   if (verbose) {
     std::cerr << "   " << fabs(vol) << std::endl;
   }
-  return fabs(vol) >= MIN_TETRAHEDRAL_CHIRAL_VOL;
+  return fabs(vol) >= volScale * MIN_TETRAHEDRAL_CHIRAL_VOL;
 }
 
 bool _sameSide(const RDGeom::Point3D &v1, const RDGeom::Point3D &v2,
@@ -495,8 +506,9 @@ bool firstMinimization(RDGeom::PointPtrVect *positions,
     }
   }
   std::unique_ptr<ForceFields::ForceField> field(DistGeom::constructForceField(
-      *eargs.mmat, *positions, *eargs.chiralCenters, 1.0, 0.1, nullptr,
-      embedParams.basinThresh, &fixedPts));
+      *eargs.mmat, *positions, *eargs.chiralCenters, 1.0, 0.1,
+      embedParams.customBoundsMatForceConstants.get(), embedParams.basinThresh,
+      &fixedPts));
   if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
     for (const auto &v : *embedParams.coordMap) {
       field->fixedPoints().push_back(v.first);
@@ -518,16 +530,10 @@ bool firstMinimization(RDGeom::PointPtrVect *positions,
             << std::endl;
 #endif
 
-  // check that neither the energy nor any of the contributions to it are
-  // too high (this is part of github #971)
-  if (local_e / positions->size() >= MAX_MINIMIZED_E_PER_ATOM ||
-      (e_contribs.size() &&
-       *(std::max_element(e_contribs.begin(), e_contribs.end())) >
-           MAX_MINIMIZED_E_CONTRIB)) {
+  // check that the energy is not too high (this is part of github #971)
+  if (local_e / positions->size() >= MAX_MINIMIZED_E_PER_ATOM) {
 #ifdef DEBUG_EMBEDDING
-    std::cerr << " Energy fail: " << local_e / positions->size() << " "
-              << *(std::max_element(e_contribs.begin(), e_contribs.end()))
-              << std::endl;
+    std::cerr << " Energy fail: " << local_e / positions->size() << std::endl;
 #endif
     gotCoords = false;
   }
@@ -569,8 +575,8 @@ bool checkChiralCenters(const RDGeom::PointPtrVect *positions,
         chiralSet->d_idx4, *positions);
     double lb = chiralSet->getLowerVolumeBound();
     double ub = chiralSet->getUpperVolumeBound();
-    if ((lb > 0 && vol < lb && ((lb - vol) / lb > .2 || vol * lb < 0)) ||
-        (ub < 0 && vol > ub && ((vol - ub) / ub > .2 || vol * ub < 0))) {
+    if ((lb > 0 && vol < lb && (vol / lb < .8 || haveOppositeSign(vol, lb))) ||
+        (ub < 0 && vol > ub && (vol / ub < .8 || haveOppositeSign(vol, ub)))) {
 #ifdef DEBUG_EMBEDDING
       std::cerr << " fail! (" << chiralSet->d_idx0 << ") iter: "
                 << " " << vol << " " << lb << "-" << ub << std::endl;
@@ -589,7 +595,8 @@ bool minimizeFourthDimension(RDGeom::PointPtrVect *positions,
   // increasing the weight on the fourth dimension
 
   std::unique_ptr<ForceFields::ForceField> field2(DistGeom::constructForceField(
-      *eargs.mmat, *positions, *eargs.chiralCenters, 0.2, 1.0, nullptr,
+      *eargs.mmat, *positions, *eargs.chiralCenters, 0.2, 1.0,
+      embedParams.customBoundsMatForceConstants.get(),
       embedParams.basinThresh));
   if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
     for (const auto &v : *embedParams.coordMap) {
@@ -598,7 +605,7 @@ bool minimizeFourthDimension(RDGeom::PointPtrVect *positions,
   }
 
   field2->initialize();
-  // std::cerr<<"FIELD2 E: "<<field2->calcEnergy()<<std::endl;
+  // std::cerr << "FIELD2 E: " << field2->calcEnergy() << std::endl;
   if (field2->calcEnergy() > ERROR_TOL) {
     int needMore = 1;
     while (needMore) {
@@ -628,11 +635,11 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
       field.reset(DistGeom::construct3DForceField(
           *eargs.mmat, positions3D, *eargs.etkdgDetails, *embedParams.CPCI));
     } else {
-      if (embedParams.customKConstraintAtomIndices) {
+      if (embedParams.customBoundsMatForceConstants) {
         auto useKCustoms = true;
         field.reset(DistGeom::construct3DForceField(
             *eargs.mmat, positions3D, *eargs.etkdgDetails, useKCustoms,
-            *embedParams.customKConstraintAtomIndices));
+            *embedParams.customBoundsMatForceConstants));
       } else {
         field.reset(DistGeom::construct3DForceField(*eargs.mmat, positions3D,
                                                     *eargs.etkdgDetails));
@@ -663,9 +670,8 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
   if (embedParams.useBasicKnowledge) {
     // create a force field with only the impropers
     std::unique_ptr<ForceFields::ForceField> field2(
-        DistGeom::construct3DImproperForceField(
-            *eargs.mmat, positions3D, eargs.etkdgDetails->improperAtoms,
-            eargs.etkdgDetails->angles, eargs.etkdgDetails->atomNums));
+        DistGeom::construct3DImproperForceField(*eargs.mmat, positions3D,
+                                                *eargs.etkdgDetails));
     if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
       for (const auto &v : *embedParams.coordMap) {
         field2->fixedPoints().push_back(v.first);
@@ -697,25 +703,25 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
   return planar;
 }
 
-bool minimizeOnBounds(RDGeom::PointPtrVect &positions,
-                      const detail::EmbedArgs &eargs,
-                      const EmbedParameters &embedParams) {
-  auto forceField = std::make_unique<ForceFields::ForceField>();
-  for (auto position : positions) {
-    forceField->positions().push_back(position);
-  }
-  for (auto const &[atomIndices, constraintForce] :
-       *embedParams.customKConstraintAtomIndices) {
-    auto [atomIndex1, atomIndex2] = atomIndices;
-    auto l = eargs.mmat->getLowerBound(atomIndex1, atomIndex2);
-    auto u = eargs.mmat->getUpperBound(atomIndex1, atomIndex2);
-    auto *contrib = new ForceFields::MMFF::DistanceConstraintContrib(
-        forceField.get(), atomIndex1, atomIndex2, l, u, constraintForce);
-    forceField->contribs().push_back(ForceFields::ContribPtr(contrib));
-  }
-  forceField->initialize();
-  return forceField->minimize(1000, embedParams.optimizerForceTol);
-}
+// bool minimizeOnBounds(RDGeom::PointPtrVect &positions,
+//                       const detail::EmbedArgs &eargs,
+//                       const EmbedParameters &embedParams) {
+//   auto forceField = std::make_unique<ForceFields::ForceField>();
+//   for (auto position : positions) {
+//     forceField->positions().push_back(position);
+//   }
+//   for (auto const &[atomIndices, constraintForce] :
+//        *embedParams.customKConstraintAtomIndices) {
+//     auto [atomIndex1, atomIndex2] = atomIndices;
+//     auto l = eargs.mmat->getLowerBound(atomIndex1, atomIndex2);
+//     auto u = eargs.mmat->getUpperBound(atomIndex1, atomIndex2);
+//     auto *contrib = new ForceFields::MMFF::DistanceConstraintContrib(
+//         forceField.get(), atomIndex1, atomIndex2, l, u, constraintForce);
+//     forceField->contribs().push_back(ForceFields::ContribPtr(contrib));
+//   }
+//   forceField->initialize();
+//   return forceField->minimize(1000, embedParams.optimizerForceTol);
+// }
 
 bool doubleBondGeometryChecks(const RDGeom::PointPtrVect &positions,
                               const detail::EmbedArgs &eargs, EmbedParameters &,
@@ -967,21 +973,22 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
         }
       }
 
-      // Marc's special minimization
+      //       // Marc's special minimization
 
-      if (gotCoords && embedParams.extraMinimizeOnBounds &&
-          embedParams.customKConstraintAtomIndices) {
-        gotCoords =
-            EmbeddingOps::minimizeOnBounds(*positions, eargs, embedParams);
-        if (!gotCoords) {
-          if (embedParams.trackFailures) {
-#ifdef RDK_BUILD_THREADSAFE_SSS
-            std::lock_guard<std::mutex> lock(GetFailMutex());
-#endif
-            embedParams.failures[EmbedFailureCauses::ETK_MINIMIZATION]++;
-          }
-        }
-      }
+      //       if (gotCoords && embedParams.extraMinimizeOnBounds &&
+      //           embedParams.customKConstraintAtomIndices) {
+      //         gotCoords =
+      //             EmbeddingOps::minimizeOnBounds(*positions, eargs,
+      //             embedParams);
+      //         if (!gotCoords) {
+      //           if (embedParams.trackFailures) {
+      // #ifdef RDK_BUILD_THREADSAFE_SSS
+      //             std::lock_guard<std::mutex> lock(GetFailMutex());
+      // #endif
+      //             embedParams.failures[EmbedFailureCauses::ETK_MINIMIZATION]++;
+      //           }
+      //         }
+      //       }
 
       if (gotCoords) {
         gotCoords = EmbeddingOps::doubleBondGeometryChecks(*positions, eargs,
@@ -1105,19 +1112,33 @@ void findChiralSets(const ROMol &mol, DistGeom::VECT_CHIRALSET &chiralCenters,
           nbrs.insert(nbrs.end(), atom->getIdx());
         }
 
+        // set a flag for tetrahedral centers that are in multiple small rings
+        auto numSmallRings = 0u;
+        constexpr int smallRingSize = 5;
+        for (const auto sz : mol.getRingInfo()->atomRingSizes(atom->getIdx())) {
+          if (sz < smallRingSize) {
+            ++numSmallRings;
+          }
+        }
+        std::uint64_t structureFlags = 0;
+        if (numSmallRings > 1) {
+          structureFlags = static_cast<std::uint64_t>(
+              DistGeom::ChiralSetStructureFlags::IN_FUSED_SMALL_RINGS);
+        }
+
         // now create a chiral set and set the upper and lower bound on the
         // volume
         if (chiralType == Atom::CHI_TETRAHEDRAL_CCW) {
           // positive chiral volume
-          auto *cset =
-              new DistGeom::ChiralSet(atom->getIdx(), nbrs[0], nbrs[1], nbrs[2],
-                                      nbrs[3], volLowerBound, volUpperBound);
+          auto *cset = new DistGeom::ChiralSet(atom->getIdx(), nbrs[0], nbrs[1],
+                                               nbrs[2], nbrs[3], volLowerBound,
+                                               volUpperBound, structureFlags);
           DistGeom::ChiralSetPtr cptr(cset);
           chiralCenters.push_back(cptr);
         } else if (chiralType == Atom::CHI_TETRAHEDRAL_CW) {
-          auto *cset =
-              new DistGeom::ChiralSet(atom->getIdx(), nbrs[0], nbrs[1], nbrs[2],
-                                      nbrs[3], -volUpperBound, -volLowerBound);
+          auto *cset = new DistGeom::ChiralSet(atom->getIdx(), nbrs[0], nbrs[1],
+                                               nbrs[2], nbrs[3], -volUpperBound,
+                                               -volLowerBound, structureFlags);
           DistGeom::ChiralSetPtr cptr(cset);
           chiralCenters.push_back(cptr);
         } else {
@@ -1129,15 +1150,16 @@ void findChiralSets(const ROMol &mol, DistGeom::VECT_CHIRALSET &chiralCenters,
             // the coordMap
             // there's no sense doing 3-rings because those are a nightmare
           } else {
-            auto *cset = new DistGeom::ChiralSet(
-                atom->getIdx(), nbrs[0], nbrs[1], nbrs[2], nbrs[3], 0.0, 0.0);
+            auto *cset = new DistGeom::ChiralSet(atom->getIdx(), nbrs[0],
+                                                 nbrs[1], nbrs[2], nbrs[3], 0.0,
+                                                 0.0, structureFlags);
             DistGeom::ChiralSetPtr cptr(cset);
             tetrahedralCenters.push_back(cptr);
           }
         }
       }  // if block -chirality check
-    }    // if block - heavy atom check
-  }      // for loop over atoms
+    }  // if block - heavy atom check
+  }  // for loop over atoms
 
   // now do atropisomers
   for (const auto &bond : mol.bonds()) {

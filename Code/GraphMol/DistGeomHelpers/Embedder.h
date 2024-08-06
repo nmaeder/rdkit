@@ -154,8 +154,8 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   bool useMacrocycleTorsions{false};
   bool useMacrocycle14config{false};
   std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>> CPCI;
-  std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
-      customKConstraintAtomIndices;
+  std::shared_ptr<std::map<std::pair<int, int>, double>>
+      customBoundsMatForceConstants;
   void (*callback)(unsigned int);
   bool forceTransAmides{true};
   bool useSymmetryForPruning{true};
@@ -166,12 +166,12 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   bool symmetrizeConjugatedTerminalGroupsForPruning{true};
   EmbedFF embedForceField{EmbedFF::UFF};
   unsigned int numMinimizationSteps{300};
-  bool extraMinimizeOnBounds{false};
+  // bool extraMinimizeOnBounds{false};
 
   EmbedParameters()
       : boundsMat(nullptr),
         CPCI(nullptr),
-        customKConstraintAtomIndices(nullptr),
+        customBoundsMatForceConstants(nullptr),
         callback(nullptr) {}
   EmbedParameters(
       unsigned int maxIterations, int numThreads, int randomSeed,
@@ -189,9 +189,9 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
       unsigned int numMinimizationSteps = 300,
       std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
           CPCI = nullptr,
-      std::shared_ptr<std::map<std::pair<unsigned int, unsigned int>, double>>
-          customKConstraintAtomIndices = nullptr,
-      bool extraMinimizeOnBounds = false,
+      std::shared_ptr<std::map<std::pair<int, int>, double>>
+          customBoundsMatForceConstants = nullptr,
+      // bool extraMinimizeOnBounds = false,
       void (*callback)(unsigned int) = nullptr)
       : maxIterations(maxIterations),
         numThreads(numThreads),
@@ -218,11 +218,11 @@ struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
         useMacrocycleTorsions(useMacrocycleTorsions),
         useMacrocycle14config(useMacrocycle14config),
         CPCI(std::move(CPCI)),
-        customKConstraintAtomIndices(std::move(customKConstraintAtomIndices)),
+        customBoundsMatForceConstants(std::move(customBoundsMatForceConstants)),
         callback(callback),
         embedForceField(embedForceField),
-        numMinimizationSteps(numMinimizationSteps),
-        extraMinimizeOnBounds(extraMinimizeOnBounds) {}
+        numMinimizationSteps(numMinimizationSteps) {}
+  // extraMinimizeOnBounds(extraMinimizeOnBounds) {}
 };
 
 //! update parameters from a JSON string
