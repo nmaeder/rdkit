@@ -468,13 +468,13 @@ void addLongRangeDistanceConstraints(
 
 void addBoundsMatTerms(
     ForceFields::ForceField *ff, const BoundsMatrix &mmat,
-    const std::map<std::pair<int, int>, double> &customKConstraintAtomIndices) {
+    std::map<std::pair<int, int>, double> customKConstraintAtomIndices) {
   auto numAtoms = mmat.numRows();
   for (unsigned int i = 1; i < numAtoms; ++i) {
     for (unsigned int j = 0; j < i; ++j) {
       auto lb = mmat.getLowerBound(i, j);
       auto ub = mmat.getUpperBound(i, j);
-      auto K = customKConstraintAtomIndices.at(std::make_pair(i, j));
+      auto K = customKConstraintAtomIndices[std::make_pair(i, j)];
       auto *contrib =
           new ForceFields::UFF::DistanceConstraintContrib(ff, i, j, lb, ub, K);
       ff->contribs().emplace_back(contrib);
