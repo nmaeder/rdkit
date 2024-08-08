@@ -975,7 +975,7 @@ TEST_CASE("Test 12/13 check and calc functions") {
     DistGeom::BoundsMatPtr bm{new DistGeom::BoundsMatrix(mol->getNumAtoms())};
     DGeomHelpers::initBoundsMat(bm);
     {
-      auto totest = DGeomHelpers::Details::check12UFF(*mol);
+      auto totest = DGeomHelpers::Details::parametrizeMolUFF(*mol);
       auto solution = UFF::getAtomTypes(*mol);
       CHECK(totest.first == solution.second);
       for (auto bond : mol->bonds()) {
@@ -989,7 +989,7 @@ TEST_CASE("Test 12/13 check and calc functions") {
       }
     }
     {
-      auto [success, params] = DGeomHelpers::Details::check12MMFF(*mol);
+      auto [success, params] = DGeomHelpers::Details::parametrizeMolMMFF(*mol);
       CHECK(success == params.isValid());
       for (auto bond : mol->bonds()) {
         MMFF::MMFFBond bProp;
@@ -1009,18 +1009,18 @@ TEST_CASE("Test 12/13 check and calc functions") {
     DGeomHelpers::initBoundsMat(bm);
     auto bond = *mol->bonds().begin();
     {
-      auto [success, params] = DGeomHelpers::Details::check12UFF(*mol);
+      auto [success, params] = DGeomHelpers::Details::parametrizeMolUFF(*mol);
       CHECK_FALSE(success);
       CHECK(DGeomHelpers::Details::calc12UFFBounds(
                 *mol, bond, params, bond->getBeginAtomIdx(),
-                bond->getEndAtomIdx()) == double(-1000));
+                bond->getEndAtomIdx()) == -1.0);
     }
     {
-      auto [success, params] = DGeomHelpers::Details::check12MMFF(*mol);
+      auto [success, params] = DGeomHelpers::Details::parametrizeMolMMFF(*mol);
       CHECK_FALSE(success);
       CHECK(DGeomHelpers::Details::calc12MMFFBounds(
                 *mol, bond, params, bond->getBeginAtomIdx(),
-                bond->getEndAtomIdx()) == double(-1000));
+                bond->getEndAtomIdx()) == -1.0);
     }
   }
 }
@@ -1040,7 +1040,7 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
     bool useMacrocycle14config = false;
     bool forceTransAmides = false;
     {
-      auto [success, params] = DGeomHelpers::Details::check12UFF(*mol);
+      auto [success, params] = DGeomHelpers::Details::parametrizeMolUFF(*mol);
       REQUIRE(success);
       DGeomHelpers::setTopolBounds(*mol, bmuff, set15bounds, scaleVDW,
                                    useMacrocycle14config, forceTransAmides,
@@ -1056,7 +1056,7 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
       }
     }
     {
-      auto [success, params] = DGeomHelpers::Details::check12MMFF(*mol);
+      auto [success, params] = DGeomHelpers::Details::parametrizeMolMMFF(*mol);
       REQUIRE(success);
       DGeomHelpers::setTopolBounds(*mol, bmmmff, set15bounds, scaleVDW,
                                    useMacrocycle14config, forceTransAmides,
@@ -1087,9 +1087,9 @@ TEST_CASE("Integration test of 12/13 in set topol bounds") {
       DistGeom::BoundsMatPtr bm{new DistGeom::BoundsMatrix(mol->getNumAtoms())};
       DGeomHelpers::initBoundsMat(bm);
       {
-        auto resm = DGeomHelpers::Details::check12MMFF(*mol);
+        auto resm = DGeomHelpers::Details::parametrizeMolMMFF(*mol);
         REQUIRE_FALSE(resm.first);
-        auto resu = DGeomHelpers::Details::check12UFF(*mol);
+        auto resu = DGeomHelpers::Details::parametrizeMolUFF(*mol);
         REQUIRE_FALSE(resu.first);
         DGeomHelpers::setTopolBounds(*mol, bm, set15bounds, scaleVDW,
                                      useMacrocycle14config, forceTransAmides,

@@ -11,9 +11,9 @@ class ROMol;
 namespace DGeomHelpers {
 namespace Details {
 
-std::pair<bool, UFF::AtomicParamVect> check12UFF(const ROMol &mol);
+std::pair<bool, UFF::AtomicParamVect> parametrizeMolUFF(const ROMol &mol);
 
-std::pair<bool, MMFF::MMFFMolProperties> check12MMFF(const ROMol &mol);
+std::pair<bool, MMFF::MMFFMolProperties> parametrizeMolMMFF(const ROMol &mol);
 
 double calc12UFFBounds(const ROMol &mol, Bond *const bond,
                        UFF::AtomicParamVect params, unsigned int begId,
