@@ -78,8 +78,7 @@ class TestCase(unittest.TestCase):
     self.assertTrue(cfac.GetNumMolFeatures(mol, includeOnly="Bogus") == 0)
 
     self.assertRaises(IndexError, lambda: cfac.GetMolFeature(mol, 1, includeOnly="HBondDonor"))
-    self.assertRaises(IndexError,
-                      lambda: cfac.GetMolFeature(mol, 2, includeOnly="HBondAcceptor"))
+    self.assertRaises(IndexError, lambda: cfac.GetMolFeature(mol, 2, includeOnly="HBondAcceptor"))
     f = cfac.GetMolFeature(mol, 0, includeOnly="HBondDonor")
     self.assertTrue(f.GetFamily() == 'HBondDonor')
 
@@ -125,15 +124,13 @@ EndFeature\r
     Weights 1.0
 EndFeature
 """
-    self.assertRaises(ValueError,
-                      lambda: ChemicalFeatures.BuildFeatureFactoryFromString(fdefBlock))
+    self.assertRaises(ValueError, lambda: ChemicalFeatures.BuildFeatureFactoryFromString(fdefBlock))
     fdefBlock = \
 """DefineFeature HDonor1 [N,O;!H0]
     Family HBondDonor
     Weights 1.0
 """
-    self.assertRaises(ValueError,
-                      lambda: ChemicalFeatures.BuildFeatureFactoryFromString(fdefBlock))
+    self.assertRaises(ValueError, lambda: ChemicalFeatures.BuildFeatureFactoryFromString(fdefBlock))
 
     self.assertRaises(IOError, lambda: ChemicalFeatures.BuildFeatureFactory('noSuchFile.txt'))
 
@@ -208,7 +205,8 @@ EndFeature
 
     # Conformers generation:
     m2 = Chem.AddHs(m)
-    AllChem.EmbedMultipleConfs(m2, numConfs=10, params=AllChem.ETKDG())
+    AllChem.EmbedMultipleConfs(m2, numConfs=10, params=AllChem.ETKDG(),
+                               debugParams=rdDistGeom.DebugParameters())
 
     feats_0 = cfac.GetFeaturesForMol(m2, confId=-1)
     feats_5 = cfac.GetFeaturesForMol(m2, confId=5)

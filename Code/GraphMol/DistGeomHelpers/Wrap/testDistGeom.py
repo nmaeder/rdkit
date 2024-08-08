@@ -260,7 +260,7 @@ class TestCase(unittest.TestCase):
     expected = [4, 5, 5, 7, 5, 3]
     for smi in smiles:
       mol = Chem.MolFromSmiles(smi)
-      cids = rdDistGeom.EmbedMultipleConfs(mol, 50, params)
+      cids = rdDistGeom.EmbedMultipleConfs(mol, 50, params, rdDistGeom.DebugParameters())
       nconfs.append(len(cids))
 
       d = [abs(x - y) for x, y in zip(expected, nconfs)]
@@ -503,7 +503,7 @@ class TestCase(unittest.TestCase):
     ref = Chem.MolFromMolFile(fn, removeHs=False)
     params = rdDistGeom.EmbedParameters()
     params.randomSeed = 42
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
 
     fn = os.path.join(
@@ -518,11 +518,11 @@ class TestCase(unittest.TestCase):
     params = rdDistGeom.EmbedParameters()
     params.randomSeed = 42
     params.useExpTorsionAnglePrefs = True
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
     params = rdDistGeom.ETDG()
     params.randomSeed = 42
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
 
     fn = os.path.join(
@@ -538,11 +538,11 @@ class TestCase(unittest.TestCase):
     params.randomSeed = 42
     params.useExpTorsionAnglePrefs = True
     params.useBasicKnowledge = True
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
     params = rdDistGeom.ETKDG()
     params.randomSeed = 42
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
 
     fn = os.path.join(
@@ -557,11 +557,11 @@ class TestCase(unittest.TestCase):
     params = rdDistGeom.EmbedParameters()
     params.randomSeed = 42
     params.useBasicKnowledge = True
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
     params = rdDistGeom.KDG()
     params.randomSeed = 42
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
 
   def test10ETKDGv2(self):
@@ -577,7 +577,7 @@ class TestCase(unittest.TestCase):
     ref = Chem.MolFromMolFile(fn, removeHs=False)
     params = rdDistGeom.ETKDGv2()
     params.randomSeed = 42
-    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters()), 0)
     self._compareConfs(mol, ref, 0, 0)
 
   def assertDeterministicWithSeed(self, seed):
@@ -589,10 +589,10 @@ class TestCase(unittest.TestCase):
       params.randomSeed = seed
 
     firstMol = Chem.AddHs(input_mol)
-    firstIds = AllChem.EmbedMultipleConfs(firstMol, 11, params)
+    firstIds = AllChem.EmbedMultipleConfs(firstMol, 11, params, rdDistGeom.DebugParameters())
 
     secondMol = Chem.AddHs(input_mol)
-    secondIds = AllChem.EmbedMultipleConfs(secondMol, 11, params)
+    secondIds = AllChem.EmbedMultipleConfs(secondMol, 11, params, rdDistGeom.DebugParameters())
 
     self.assertEqual(list(firstIds), list(secondIds))
     self.assertEqual(firstMol.GetNumConformers(), secondMol.GetNumConformers())
@@ -660,7 +660,7 @@ class TestCase(unittest.TestCase):
     ps.useRandomCoords = True
     ps.SetBoundsMat(bm1)
     ps.randomSeed = 0xF00D
-    self.assertEqual(rdDistGeom.EmbedMolecule(m1, ps), 0)
+    self.assertEqual(rdDistGeom.EmbedMolecule(m1, ps, rdDistGeom.DebugParameters()), 0)
     conf = m1.GetConformer()
     self.assertAlmostEqual(
       (conf.GetAtomPosition(3) - conf.GetAtomPosition(0)).Length(),
@@ -691,7 +691,7 @@ class TestCase(unittest.TestCase):
       ps.useBasicKnowledge = True
       ps.useRandomCoords = False
       m1 = Chem.MolFromSmiles("C1CCCC1C")
-      self.assertEqual(rdDistGeom.EmbedMolecule(m1, ps), 0)
+      self.assertEqual(rdDistGeom.EmbedMolecule(m1, ps, rdDistGeom.DebugParameters()), 0)
 
       m2 = Chem.MolFromSmiles("C1CCCC1C")
       ps = rdDistGeom.EmbedParameters()
@@ -699,7 +699,7 @@ class TestCase(unittest.TestCase):
       ps.useRandomCoords = False
       ps.useBasicKnowledge = True
       ps.SetCPCI({(0, 3): 0.9})
-      self.assertEqual(rdDistGeom.EmbedMolecule(m2, ps), 0)
+      self.assertEqual(rdDistGeom.EmbedMolecule(m2, ps, rdDistGeom.DebugParameters()), 0)
 
       conf1 = m1.GetConformer()
       conf2 = m2.GetConformer()
@@ -725,7 +725,7 @@ class TestCase(unittest.TestCase):
       DG.DoTriangleSmoothing(bm1)
       ps.boundsMatForceScaling = 0.1
       ps.SetBoundsMat(bm1)
-      self.assertEqual(rdDistGeom.EmbedMolecule(m1, ps), 0)
+      self.assertEqual(rdDistGeom.EmbedMolecule(m1, ps, rdDistGeom.DebugParameters()), 0)
 
       m2 = Chem.MolFromSmiles("CCCCC")
       ps = rdDistGeom.EmbedParameters()
@@ -734,7 +734,7 @@ class TestCase(unittest.TestCase):
       ps.useRandomCoords = False
       ps.boundsMatForceScaling = 10
       ps.SetBoundsMat(bm1)
-      self.assertEqual(rdDistGeom.EmbedMolecule(m2, ps), 0)
+      self.assertEqual(rdDistGeom.EmbedMolecule(m2, ps, rdDistGeom.DebugParameters()), 0)
 
       conf1 = m1.GetConformer()
       conf2 = m2.GetConformer()
@@ -766,7 +766,7 @@ class TestCase(unittest.TestCase):
     mol = Chem.AddHs(smiles_mol)
     params = AllChem.ETKDGv3()
     params.randomSeed = 0
-    AllChem.EmbedMolecule(mol, params)
+    AllChem.EmbedMolecule(mol, params, rdDistGeom.DebugParameters())
     conf = mol.GetConformer(0)
     for torsion in get_atom_mapping(mol):
       a1, a2, a3, a4 = [conf.GetAtomPosition(i) for i in torsion]
@@ -799,7 +799,7 @@ class TestCase(unittest.TestCase):
     params.randomSeed = 42
     mol = Chem.MolFromSmiles('O=c2cc3CCc1ccc(cc1Br)CCc2c(O)c3=O')
     mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol, params)
+    AllChem.EmbedMolecule(mol, params, rdDistGeom.DebugParameters())
     cnts = params.GetFailureCounts()
     self.assertEqual(cnts[AllChem.EmbedFailureCauses.INITIAL_COORDS], 2)
     self.assertEqual(cnts[AllChem.EmbedFailureCauses.ETK_MINIMIZATION], 5)
@@ -814,7 +814,7 @@ class TestCase(unittest.TestCase):
     }
     ps.SetCoordMap(coordMap)
     ps.randomSeed = 42
-    rdDistGeom.EmbedMolecule(mol, ps)
+    rdDistGeom.EmbedMolecule(mol, ps, rdDistGeom.DebugParameters())
 
     conf = mol.GetConformer()
     v1 = conf.GetAtomPosition(0) - conf.GetAtomPosition(1)
@@ -830,7 +830,7 @@ class TestCase(unittest.TestCase):
     }
     ps.SetCoordMap(coordMap)
     ps.randomSeed = 42
-    rdDistGeom.EmbedMolecule(mol, ps)
+    rdDistGeom.EmbedMolecule(mol, ps, rdDistGeom.DebugParameters())
 
     conf = mol.GetConformer()
     v1 = conf.GetAtomPosition(0) - conf.GetAtomPosition(1)
@@ -843,19 +843,19 @@ class TestCase(unittest.TestCase):
     mol = Chem.AddHs(mol)
     params = rdDistGeom.EmbedParameters()
     params.embedForceField = rdDistGeom.EmbedFF.UFF
-    rdDistGeom.EmbedMolecule(mol, params)
+    rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters())
     params.embedForceField = rdDistGeom.EmbedFF.MMFF
-    rdDistGeom.EmbedMolecule(mol, params)
+    rdDistGeom.EmbedMolecule(mol, params, rdDistGeom.DebugParameters())
 
   def testSymmetrizeTerminal(self):
     mol = Chem.AddHs(Chem.MolFromSmiles("FCC(=O)O"))
     ps = rdDistGeom.ETKDGv3()
     ps.randomSeed = 0xC0FFEE
     ps.pruneRmsThresh = 0.5
-    cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps)
+    cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps, rdDistGeom.DebugParameters())
     self.assertEqual(len(cids), 1)
     ps.symmetrizeConjugatedTerminalGroupsForPruning = False
-    cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps)
+    cids = rdDistGeom.EmbedMultipleConfs(mol, 50, ps, rdDistGeom.DebugParameters())
     self.assertGreater(len(cids), 1)
 
 
