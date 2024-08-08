@@ -347,11 +347,15 @@ std::ostream &operator<<(std::ostream &target,
                          const RDNumeric::SymmMatrix<TYPE> &mat) {
   unsigned int nr = mat.numRows();
   unsigned int nc = mat.numCols();
-  target << "Rows: " << mat.numRows() << " Columns: " << mat.numCols() << "\n";
+  // target << "Rows: " << mat.numRows() << " Columns: " << mat.numCols() <<
+  // "\n";
 
   for (unsigned int i = 0; i < nr; i++) {
     for (unsigned int j = 0; j < nc; j++) {
-      target << std::setw(7) << std::setprecision(3) << mat.getVal(i, j);
+      target << std::setprecision(10) << mat.getVal(i, j);
+      if (j != nc - 1) {
+        target << ",";
+      }
     }
     target << "\n";
   }
