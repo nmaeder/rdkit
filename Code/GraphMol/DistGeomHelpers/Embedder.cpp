@@ -487,7 +487,7 @@ bool generateInitialCoords(RDGeom::PointPtrVect *positions,
   if (!embedParams.useRandomCoords) {
     double largestDistance =
         DistGeom::pickRandomDistMat(*eargs.mmat, distMat, *rng);
-    printDistMat(nullptr, distMat, "TODO");
+    printDistMat(nullptr, distMat, "/tmp/TODO.csv");
     RDUNUSED_PARAM(largestDistance);
     gotCoords = DistGeom::computeInitialCoords(distMat, *positions, *rng,
                                                embedParams.randNegEig,
@@ -888,7 +888,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     }
     gotCoords = EmbeddingOps::generateInitialCoords(positions, eargs,
                                                     embedParams, distMat, rng);
-    printDistMat(positions, distMat, "TODO");
+    printDistMat(positions, distMat, "/tmp/TODO.csv");
     if (!gotCoords) {
       if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -899,7 +899,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     } else {
       gotCoords =
           EmbeddingOps::firstMinimization(positions, eargs, embedParams);
-      printDistMat(positions, distMat, "TODO");
+      printDistMat(positions, distMat, "/tmp/TODO.csv");
       if (!gotCoords) {
         if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -941,7 +941,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           (eargs.chiralCenters->size() > 0 || embedParams.useRandomCoords)) {
         gotCoords = EmbeddingOps::minimizeFourthDimension(positions, eargs,
                                                           embedParams);
-        printDistMat(positions, distMat, "TODO");
+        printDistMat(positions, distMat, "/tmp/TODO.csv");
         if (!gotCoords) {
           if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -958,7 +958,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
                         embedParams.useBasicKnowledge)) {
         gotCoords = EmbeddingOps::minimizeWithExpTorsions(*positions, eargs,
                                                           embedParams);
-        printDistMat(positions, distMat, "TODO");
+        printDistMat(positions, distMat, "/tmp/TODO.csv");
         if (!gotCoords) {
           if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
