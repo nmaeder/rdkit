@@ -45,18 +45,50 @@ enum EmbedFailureCauses {
  */
 enum class EmbedFF { UFF, MMFF };
 
+struct DebugParameters {
+  bool useBoundsInETKMins{false};
+  bool disableKTerms{false};
+  bool disableETTerms{false};
+  double KTermLinearityForceconstant{10.0};
+  double KTermPlanarityForceconstant{1.0};
+  double ETTermForceConstant{10.0};
+  std::string pathForDistMatFiles{""};
+  bool scaleMMFFForDash{false};
+  std::shared_ptr<std::map<std::pair<int, int>, double>>
+      customForcesForMinimizations{nullptr};
+
+  DebugParameters(bool useBoundsInETKMins = false, bool disableKTerms = false,
+                  bool disableETTerms = false,
+                  double KTermLinearityForceconstant = 10.0,
+                  double KTermPlanarityForceconstant = 1.0,
+                  double ETTermForceConstant = 10.0,
+                  std::string pathForDistMatFiles = "",
+                  bool scaleMMFFForDash = false,
+                  std::shared_ptr<std::map<std::pair<int, int>, double>>
+                      customForcesForMinimizations = nullptr)
+      : useBoundsInETKMins(useBoundsInETKMins),
+        disableKTerms(disableKTerms),
+        disableETTerms(disableETTerms),
+        KTermLinearityForceconstant(KTermLinearityForceconstant),
+        KTermPlanarityForceconstant(KTermPlanarityForceconstant),
+        ETTermForceConstant(ETTermForceConstant),
+        pathForDistMatFiles(pathForDistMatFiles),
+        scaleMMFFForDash(scaleMMFFForDash),
+        customForcesForMinimizations(std::move(customForcesForMinimizations)) {}
+};
+
+const auto defaultDebugParams = DebugParameters();
+
 //! Parameter object for controlling embedding
 /*!
   numConfs       Number of conformations to be generated
   numThreads     Sets the number of threads to use (more than one thread
                  will only be used if the RDKit was build with multithread
-                 support) If set to zero, the max supported by the system will
-                 be used.
-  maxIterations  Max. number of times the embedding will be tried if
-                 coordinates are not obtained successfully. The default
-                 value is 10x the number of atoms.
-  randomSeed     provides a seed for the random number generator (so that
-                 the same coordinates can be obtained for a
+                 support) If set to zero, the max supported by the system
+  will be used. maxIterations  Max. number of times the embedding will be
+  tried if coordinates are not obtained successfully. The default value is
+  10x the number of atoms. randomSeed     provides a seed for the random
+  number generator (so that the same coordinates can be obtained for a
                  molecule on multiple runs) If -1, the
                  RNG will not be seeded.
   clearConfs     Clear all existing conformations on the molecule
@@ -66,26 +98,21 @@ enum class EmbedFF { UFF, MMFF };
                  random coordinates. If this is a positive number, the
                  side length will equal the largest element of the distance
                  matrix times \c boxSizeMult. If this is a negative number,
-                 the side length will equal \c -boxSizeMult (i.e. independent
-                 of the elements of the distance matrix).
-  randNegEig     Picks coordinates at random when a embedding process produces
-                 negative eigenvalues
-  numZeroFail    Fail embedding if we find this many or more zero eigenvalues
-                 (within a tolerance)
-  pruneRmsThresh Retain only the conformations out of 'numConfs' after
-                 embedding that are at least this far apart from each other.
-                 RMSD is computed on the heavy atoms.
-                 Prunining is greedy; i.e. the first embedded conformation is
-                 retained and from then on only those that are at least
-                 \c pruneRmsThresh away from already
-                 retained conformations are kept. The pruning is done
-                 after embedding and bounds violation minimization.
-                 No pruning by default.
-  coordMap       a map of int to Point3D, between atom IDs and their locations
-                 their locations.  If this container is provided, the
-                 coordinates are used to set distance constraints on the
-                 embedding. The resulting conformer(s) should have distances
-                 between the specified atoms that reproduce those between the
+                 the side length will equal \c -boxSizeMult (i.e.
+  independent of the elements of the distance matrix). randNegEig     Picks
+  coordinates at random when a embedding process produces negative
+  eigenvalues numZeroFail    Fail embedding if we find this many or more
+  zero eigenvalues (within a tolerance) pruneRmsThresh Retain only the
+  conformations out of 'numConfs' after embedding that are at least this far
+  apart from each other. RMSD is computed on the heavy atoms. Prunining is
+  greedy; i.e. the first embedded conformation is retained and from then on
+  only those that are at least \c pruneRmsThresh away from already retained
+  conformations are kept. The pruning is done after embedding and bounds
+  violation minimization. No pruning by default. coordMap       a map of int
+  to Point3D, between atom IDs and their locations their locations.  If this
+  container is provided, the coordinates are used to set distance
+  constraints on the embedding. The resulting conformer(s) should have
+  distances between the specified atoms that reproduce those between the
                  points in \c coordMap. Because the embedding produces a
                  molecule in an arbitrary reference frame, an alignment step
                  is required to actually reproduce the provided coordinates.
@@ -93,26 +120,23 @@ enum class EmbedFF { UFF, MMFF };
                     (this shouldn't normally be altered in client code).
   ignoreSmoothingFailures  try to embed the molecule even if triangle bounds
                            smoothing fails
-  enforceChirality  enforce the correct chirality if chiral centers are present
-  useExpTorsionAnglePrefs  impose experimental torsion-angle preferences
-  useBasicKnowledge  impose "basic knowledge" terms such as flat
+  enforceChirality  enforce the correct chirality if chiral centers are
+  present useExpTorsionAnglePrefs  impose experimental torsion-angle
+  preferences useBasicKnowledge  impose "basic knowledge" terms such as flat
                      aromatic rings, ketones, etc.
   ETversion      version of the experimental torsion-angle preferences
   verbose        print output of experimental torsion-angle preferences
   basinThresh    set the basin threshold for the DGeom force field,
                  (this shouldn't normally be altered in client code).
   onlyHeavyAtomsForRMS  only use the heavy atoms when doing RMS filtering
-  boundsMat      custom bound matrix to specify upper and lower bounds of atom
-                 pairs
-  embedFragmentsSeparately	embed each fragment of molecule in turn
-  useSmallRingTorsions	optional torsions to improve small ring conformer
-                sampling
-  useMacrocycleTorsions	optional torsions to improve macrocycle conformer
-                sampling
-  useMacrocycle14config  If 1-4 distances bound heuristics for
-                macrocycles is used
-  embedForceField force field to use for 1-2 and 1-3 distances
-  numMinimizationSteps number of steps to minimize in embedding.
+  boundsMat      custom bound matrix to specify upper and lower bounds of
+  atom pairs embedFragmentsSeparately	embed each fragment of molecule
+  in turn useSmallRingTorsions	optional torsions to improve small ring
+  conformer sampling useMacrocycleTorsions	optional torsions to improve
+  macrocycle conformer sampling useMacrocycle14config  If 1-4 distances
+  bound heuristics for macrocycles is used embedForceField force field to
+  use for 1-2 and 1-3 distances numMinimizationSteps number of steps to
+  minimize in embedding.
   CPCI	custom columbic interactions between atom pairs
   callback	      void pointer to a function for reporting progress,
                   will be called with the current iteration number.
@@ -121,11 +145,11 @@ enum class EmbedFF { UFF, MMFF };
                           NOTE that for reasons of computational efficiency,
                           setting this will also set onlyHeavyAtomsForRMS to
                           true.
-  trackFailures    keep track of which checks during the embedding process fail
-  failures         if trackFailures is true, this is used to track the number
-                   of times each embedding check fails
-  enableSequentialRandomSeeds    handle the random number seeds so that
-                                 conformer generation can be restarted
+  trackFailures    keep track of which checks during the embedding process
+  fail failures         if trackFailures is true, this is used to track the
+  number of times each embedding check fails enableSequentialRandomSeeds
+  handle the random number seeds so that conformer generation can be
+  restarted
 */
 struct RDKIT_DISTGEOMHELPERS_EXPORT EmbedParameters {
   unsigned int maxIterations{0};
@@ -217,21 +241,23 @@ RDKIT_DISTGEOMHELPERS_EXPORT void updateEmbedParametersFromJSON(
     EmbedParameters &params, const std::string &json);
 
 //! Embed multiple conformations for a molecule
-RDKIT_DISTGEOMHELPERS_EXPORT void EmbedMultipleConfs(ROMol &mol, INT_VECT &res,
-                                                     unsigned int numConfs,
-                                                     EmbedParameters &params);
-inline INT_VECT EmbedMultipleConfs(ROMol &mol, unsigned int numConfs,
-                                   EmbedParameters &params) {
+RDKIT_DISTGEOMHELPERS_EXPORT void EmbedMultipleConfs(
+    ROMol &mol, INT_VECT &res, unsigned int numConfs, EmbedParameters &params,
+    DebugParameters debugParams = DebugParameters());
+inline INT_VECT EmbedMultipleConfs(
+    ROMol &mol, unsigned int numConfs, EmbedParameters &params,
+    DebugParameters debugParams = DebugParameters()) {
   INT_VECT res;
-  EmbedMultipleConfs(mol, res, numConfs, params);
+  EmbedMultipleConfs(mol, res, numConfs, params, debugParams);
   return res;
 }
 
 //! Compute an embedding (in 3D) for the specified molecule using Distance
 /// Geometry
-inline int EmbedMolecule(ROMol &mol, EmbedParameters &params) {
+inline int EmbedMolecule(ROMol &mol, EmbedParameters &params,
+                         DebugParameters debugParams = DebugParameters()) {
   INT_VECT confIds;
-  EmbedMultipleConfs(mol, confIds, 1, params);
+  EmbedMultipleConfs(mol, confIds, 1, params, debugParams);
 
   int res;
   if (confIds.size()) {
@@ -432,7 +458,8 @@ inline void EmbedMultipleConfs(
       useBasicKnowledge, verbose, basinThresh, pruneRmsThresh,
       onlyHeavyAtomsForRMS, ETversion, nullptr, true, useSmallRingTorsions,
       useMacrocycleTorsions, useMacrocycle14config);
-  EmbedMultipleConfs(mol, res, numConfs, params);
+  DebugParameters debugParams = DebugParameters();
+  EmbedMultipleConfs(mol, res, numConfs, params, debugParams);
 };
 //! \overload
 inline INT_VECT EmbedMultipleConfs(
@@ -455,7 +482,8 @@ inline INT_VECT EmbedMultipleConfs(
       onlyHeavyAtomsForRMS, ETversion, nullptr, true, useSmallRingTorsions,
       useMacrocycleTorsions, useMacrocycle14config);
   INT_VECT res;
-  EmbedMultipleConfs(mol, res, numConfs, params);
+  DebugParameters debugParams = DebugParameters();
+  EmbedMultipleConfs(mol, res, numConfs, params, debugParams);
   return res;
 };
 

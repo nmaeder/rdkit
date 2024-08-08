@@ -104,6 +104,27 @@ struct PyEmbedParameters
  private:
   std::unique_ptr<std::map<int, RDGeom::Point3D>> d_coordMap;
 };
+struct pyDebugParameters
+    : public RDKit::DGeomHelpers::DebugParameters,
+      public python::wrapper<RDKit::DGeomHelpers::DebugParameters> {
+ public:
+  pyDebugParameters() : RDKit::DGeomHelpers::DebugParameters() {}
+  pyDebugParameters(const RDKit::DGeomHelpers::DebugParameters &other)
+      : RDKit::DGeomHelpers::DebugParameters(other) {}
+  void setCustomForcesForMinimizations(const python::dict &forceDict) {
+    customForcesForMinimizations =
+        std::make_shared<std::map<std::pair<int, int>, double>>();
+    auto keys = forceDict.keys();
+    auto numKeys = python::extract<unsigned int>(keys.attr("__len__")());
+    for (unsigned int i = 0; i < numKeys; ++i) {
+      python::tuple id = python::extract<python::tuple>(keys[i]);
+      unsigned int a = python::extract<unsigned int>(id[0]);
+      unsigned int b = python::extract<unsigned int>(id[1]);
+      (*customForcesForMinimizations)[std::make_pair(a, b)] =
+          python::extract<double>(forceDict[id]);
+    }
+  }
+};
 }  // namespace
 
 namespace RDKit {
@@ -143,16 +164,19 @@ int EmbedMolecule(ROMol &mol, unsigned int maxAttempts, int seed,
   int res;
   {
     NOGIL gil;
-    res = DGeomHelpers::EmbedMolecule(mol, params);
+    res = DGeomHelpers::EmbedMolecule(mol, params,
+                                      DGeomHelpers::DebugParameters());
   }
   return res;
 }
 
-int EmbedMolecule2(ROMol &mol, DGeomHelpers::EmbedParameters &params) {
+int EmbedMolecule2(ROMol &mol, DGeomHelpers::EmbedParameters &params,
+                   DGeomHelpers::DebugParameters debugParams =
+                       DGeomHelpers::DebugParameters()) {
   int res;
   {
     NOGIL gil;
-    res = DGeomHelpers::EmbedMolecule(mol, params);
+    res = DGeomHelpers::EmbedMolecule(mol, params, debugParams);
   }
   return res;
 }
@@ -190,17 +214,20 @@ INT_VECT EmbedMultipleConfs(
   INT_VECT res;
   {
     NOGIL gil;
-    DGeomHelpers::EmbedMultipleConfs(mol, res, numConfs, params);
+    DGeomHelpers::EmbedMultipleConfs(mol, res, numConfs, params,
+                                     DGeomHelpers::DebugParameters());
   }
   return res;
 }
 
 INT_VECT EmbedMultipleConfs2(ROMol &mol, unsigned int numConfs,
-                             DGeomHelpers::EmbedParameters &params) {
+                             DGeomHelpers::EmbedParameters &params,
+                             DGeomHelpers::DebugParameters debugParams =
+                                 DGeomHelpers::DebugParameters()) {
   INT_VECT res;
   {
     NOGIL gil;
-    DGeomHelpers::EmbedMultipleConfs(mol, res, numConfs, params);
+    DGeomHelpers::EmbedMultipleConfs(mol, res, numConfs, params, debugParams);
   }
   return res;
 }
@@ -503,6 +530,36 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
              RDKit::DGeomHelpers::EmbedFailureCauses::CHECK_CHIRAL_CENTERS2)
       .export_values();
 
+  python::class_<pyDebugParameters, boost::noncopyable>(
+      "DebugParameters", "Verbosity parameters for DG")
+      .def_readwrite(
+          "useBoundsInETKMins", &pyDebugParameters::useBoundsInETKMins,
+          "Whether to use the bounds instead of the current values for "
+          "constraining bonds and angles in the ETK minimzation.")
+      .def_readwrite("disableKTerms", &pyDebugParameters::disableKTerms,
+                     "whether to disable K terms in etk minimization.")
+      .def_readwrite("disableETTerms", &pyDebugParameters::disableETTerms,
+                     "whether to disable ET terms in etk minimization.")
+      .def_readwrite("KTermLinearityForceconstant",
+                     &pyDebugParameters::KTermLinearityForceconstant,
+                     "Force constant for linearity terms in KDG.")
+      .def_readwrite("KTermPlanarityForceconstant",
+                     &pyDebugParameters::KTermPlanarityForceconstant,
+                     "Force Constant for planarity terms in KDG.")
+      .def_readwrite("ETTermForceConstant",
+                     &pyDebugParameters::ETTermForceConstant,
+                     "Force Constant for ET terms.")
+      .def_readwrite("pathForDistMatFiles",
+                     &pyDebugParameters::pathForDistMatFiles,
+                     "Dir where distMatrix files shoud be stored.")
+      .def_readwrite("scaleMMFFForDash", &pyDebugParameters::scaleMMFFForDash,
+                     "Whether to scale mmff 12 and 13 bounds for DASH.")
+      .def(
+          "SetCustomForcesForMinimizations",
+          &pyDebugParameters::setCustomForcesForMinimizations,
+          python::args("self", "forceDict"),
+          "Forces to be used in the different minimzations of the Molecule "
+          "embedding process. If an atom pair has none provided, defaults to 1.");
   python::class_<PyEmbedParameters, boost::noncopyable>(
       "EmbedParameters", "Parameters controlling embedding")
       .def_readwrite("maxIterations", &PyEmbedParameters::maxIterations,
@@ -625,10 +682,10 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
  RETURNS:\n\n\
     List of new conformation IDs \n\
 \n";
-  python::def(
-      "EmbedMultipleConfs", RDKit::EmbedMultipleConfs2,
-      (python::arg("mol"), python::arg("numConfs"), python::arg("params")),
-      docString.c_str());
+  python::def("EmbedMultipleConfs", RDKit::EmbedMultipleConfs2,
+              (python::arg("mol"), python::arg("numConfs"),
+               python::arg("params"), python::arg("debugParams")),
+              docString.c_str());
 
   docString =
       "Use distance geometry to obtain intial \n\
@@ -641,8 +698,10 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
  RETURNS:\n\n\
     ID of the new conformation added to the molecule \n\
 \n";
-  python::def("EmbedMolecule", RDKit::EmbedMolecule2,
-              (python::arg("mol"), python::arg("params")), docString.c_str());
+  python::def(
+      "EmbedMolecule", RDKit::EmbedMolecule2,
+      (python::arg("mol"), python::arg("params"), python::arg("debugParams")),
+      docString.c_str());
   python::def(
       "ETKDG", RDKit::getETKDG,
       "Returns an EmbedParameters object for the ETKDG method - version 1.",

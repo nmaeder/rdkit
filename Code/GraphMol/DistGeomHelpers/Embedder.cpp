@@ -482,12 +482,16 @@ bool generateInitialCoords(RDGeom::PointPtrVect *positions,
                            const detail::EmbedArgs &eargs,
                            const EmbedParameters &embedParams,
                            RDNumeric::DoubleSymmMatrix &distMat,
-                           RDKit::double_source_type *rng) {
+                           RDKit::double_source_type *rng,
+                           DebugParameters &debugParams) {
   bool gotCoords = false;
   if (!embedParams.useRandomCoords) {
     double largestDistance =
         DistGeom::pickRandomDistMat(*eargs.mmat, distMat, *rng);
-    printDistMat(nullptr, distMat, "/tmp/TODO.csv");
+    if (!debugParams.pathForDistMatFiles.empty()) {
+      printDistMat(nullptr, distMat,
+                   debugParams.pathForDistMatFiles + "random.csv");
+    }
     RDUNUSED_PARAM(largestDistance);
     gotCoords = DistGeom::computeInitialCoords(distMat, *positions, *rng,
                                                embedParams.randNegEig,
@@ -850,7 +854,8 @@ bool finalChiralChecks(RDGeom::PointPtrVect *positions,
 }
 
 bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
-                 EmbedParameters &embedParams, int seed) {
+                 EmbedParameters &embedParams, int seed,
+                 DebugParameters &debugParams) {
   PRECONDITION(positions, "bogus positions");
   if (embedParams.maxIterations == 0) {
     embedParams.maxIterations = 10 * positions->size();
@@ -886,9 +891,12 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     if (embedParams.callback != nullptr) {
       embedParams.callback(iter);
     }
-    gotCoords = EmbeddingOps::generateInitialCoords(positions, eargs,
-                                                    embedParams, distMat, rng);
-    printDistMat(positions, distMat, "/tmp/TODO.csv");
+    gotCoords = EmbeddingOps::generateInitialCoords(
+        positions, eargs, embedParams, distMat, rng, debugParams);
+    if (!debugParams.pathForDistMatFiles.empty()) {
+      printDistMat(nullptr, distMat,
+                   debugParams.pathForDistMatFiles + "initial_embedding.csv");
+    }
     if (!gotCoords) {
       if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -899,7 +907,10 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     } else {
       gotCoords =
           EmbeddingOps::firstMinimization(positions, eargs, embedParams);
-      printDistMat(positions, distMat, "/tmp/TODO.csv");
+      if (!debugParams.pathForDistMatFiles.empty()) {
+        printDistMat(nullptr, distMat,
+                     debugParams.pathForDistMatFiles + "after_first.csv");
+      }
       if (!gotCoords) {
         if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -941,7 +952,10 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           (eargs.chiralCenters->size() > 0 || embedParams.useRandomCoords)) {
         gotCoords = EmbeddingOps::minimizeFourthDimension(positions, eargs,
                                                           embedParams);
-        printDistMat(positions, distMat, "/tmp/TODO.csv");
+        if (!debugParams.pathForDistMatFiles.empty()) {
+          printDistMat(nullptr, distMat,
+                       debugParams.pathForDistMatFiles + "after_4d.csv");
+        }
         if (!gotCoords) {
           if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -958,7 +972,10 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
                         embedParams.useBasicKnowledge)) {
         gotCoords = EmbeddingOps::minimizeWithExpTorsions(*positions, eargs,
                                                           embedParams);
-        printDistMat(positions, distMat, "/tmp/TODO.csv");
+        if (!debugParams.pathForDistMatFiles.empty()) {
+          printDistMat(nullptr, distMat,
+                       debugParams.pathForDistMatFiles + "after_etk.csv");
+        }
         if (!gotCoords) {
           if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -1332,7 +1349,7 @@ bool multiplication_overflows_(T a, T b) {
 }
 
 void embedHelper_(int threadId, int numThreads, EmbedArgs *eargs,
-                  EmbedParameters *params) {
+                  EmbedParameters *params, DebugParameters *debugParams) {
   PRECONDITION(eargs, "bogus eargs");
   PRECONDITION(params, "bogus params");
   unsigned int nAtoms = eargs->mmat->numRows();
@@ -1397,8 +1414,8 @@ void embedHelper_(int threadId, int numThreads, EmbedArgs *eargs,
     }
     CHECK_INVARIANT(new_seed >= -1,
                     "Something went wrong calculating a new seed");
-    bool gotCoords =
-        EmbeddingOps::embedPoints(&positions, *eargs, *params, new_seed);
+    bool gotCoords = EmbeddingOps::embedPoints(&positions, *eargs, *params,
+                                               new_seed, *debugParams);
 
     // copy the coordinates into the correct conformer
     if (gotCoords) {
@@ -1472,7 +1489,7 @@ std::vector<std::vector<unsigned int>> getMolSelfMatches(
 }  // end of namespace detail
 
 void EmbedMultipleConfs(ROMol &mol, INT_VECT &res, unsigned int numConfs,
-                        EmbedParameters &params) {
+                        EmbedParameters &params, DebugParameters debugParams) {
   if (params.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
     std::lock_guard<std::mutex> lock(GetFailMutex());
@@ -1609,14 +1626,15 @@ void EmbedMultipleConfs(ROMol &mol, INT_VECT &res, unsigned int numConfs,
                                &doubleBondEnds, &stereoDoubleBonds,
                                &etkdgDetails};
     if (numThreads == 1) {
-      detail::embedHelper_(0, 1, &eargs, &params);
+      detail::embedHelper_(0, 1, &eargs, &params, &debugParams);
     }
 #ifdef RDK_BUILD_THREADSAFE_SSS
     else {
       std::vector<std::future<void>> tg;
       for (int tid = 0; tid < numThreads; ++tid) {
         tg.emplace_back(std::async(std::launch::async, detail::embedHelper_,
-                                   tid, numThreads, &eargs, &params));
+                                   tid, numThreads, &eargs, &params,
+                                   &debugParams));
       }
       for (auto &fut : tg) {
         fut.get();
