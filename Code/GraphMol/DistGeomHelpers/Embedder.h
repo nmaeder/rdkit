@@ -55,17 +55,18 @@ struct DebugParameters {
   std::string pathForDistMatFiles{""};
   bool scaleMMFFForDash{false};
   std::shared_ptr<std::map<std::pair<int, int>, double>>
-      customForcesForMinimizations{nullptr};
+      customForcesForMinimizations{
+          std::make_shared<std::map<std::pair<int, int>, double>>()};
 
-  DebugParameters(bool useBoundsInETKMins = false, bool disableKTerms = false,
-                  bool disableETTerms = false,
-                  double KTermLinearityForceconstant = 10.0,
-                  double KTermPlanarityForceconstant = 1.0,
-                  double ETTermForceConstant = 10.0,
-                  std::string pathForDistMatFiles = "",
-                  bool scaleMMFFForDash = false,
-                  std::shared_ptr<std::map<std::pair<int, int>, double>>
-                      customForcesForMinimizations = nullptr)
+  DebugParameters(
+      bool useBoundsInETKMins = false, bool disableKTerms = false,
+      bool disableETTerms = false, double KTermLinearityForceconstant = 10.0,
+      double KTermPlanarityForceconstant = 1.0,
+      double ETTermForceConstant = 10.0, std::string pathForDistMatFiles = "",
+      bool scaleMMFFForDash = false,
+      std::shared_ptr<std::map<std::pair<int, int>, double>>
+          customForcesForMinimizations =
+              std::make_shared<std::map<std::pair<int, int>, double>>())
       : useBoundsInETKMins(useBoundsInETKMins),
         disableKTerms(disableKTerms),
         disableETTerms(disableETTerms),
