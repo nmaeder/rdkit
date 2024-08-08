@@ -514,15 +514,6 @@ ForceFields::ForceField *construct3DForceField(
     field->contribs().emplace_back(contrib);
   }
 
-  // Check that SP Centers have an angle of 180 degrees.
-  for (const auto &angle : angles) {
-    if (angle[3]) {
-      field->contribs().emplace_back(
-          new ForceFields::UFF::AngleConstraintContrib(
-              field, angle[0], angle[1], angle[2], 179.0, 180.0,
-              oobForceScalingFactor));
-    }
-  }
   return field;
 }
 
