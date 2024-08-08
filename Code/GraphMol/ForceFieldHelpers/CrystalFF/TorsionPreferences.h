@@ -14,6 +14,7 @@
 #include <string>
 #include <memory>
 #include <boost/dynamic_bitset.hpp>
+#include <GraphMol/DistGeomHelpers/Embedder.h>
 
 namespace RDKit {
 class ROMol;
@@ -42,6 +43,7 @@ struct CrystalFFDetails {
   std::vector<int> atomNums;
   double boundsMatForceScaling;
   boost::dynamic_bitset<> constrainedAtoms;
+  RDKit::DGeomHelpers::DebugParameters debugParams;
 };
 
 //! Get the experimental torsional angles in a molecule

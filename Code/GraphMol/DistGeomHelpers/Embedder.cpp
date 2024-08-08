@@ -482,15 +482,14 @@ bool generateInitialCoords(RDGeom::PointPtrVect *positions,
                            const detail::EmbedArgs &eargs,
                            const EmbedParameters &embedParams,
                            RDNumeric::DoubleSymmMatrix &distMat,
-                           RDKit::double_source_type *rng,
-                           DebugParameters &debugParams) {
+                           RDKit::double_source_type *rng) {
   bool gotCoords = false;
   if (!embedParams.useRandomCoords) {
     double largestDistance =
         DistGeom::pickRandomDistMat(*eargs.mmat, distMat, *rng);
-    if (!debugParams.pathForDistMatFiles.empty()) {
-      printDistMat(nullptr, distMat,
-                   debugParams.pathForDistMatFiles + "random.csv");
+    auto &dir = eargs.etkdgDetails->debugParams.pathForDistMatFiles;
+    if (!dir.empty()) {
+      printDistMat(nullptr, distMat, dir + "random.csv");
     }
     RDUNUSED_PARAM(largestDistance);
     gotCoords = DistGeom::computeInitialCoords(distMat, *positions, *rng,
@@ -531,7 +530,8 @@ bool firstMinimization(RDGeom::PointPtrVect *positions,
     }
   }
   std::unique_ptr<ForceFields::ForceField> field(DistGeom::constructForceField(
-      *eargs.mmat, *positions, *eargs.chiralCenters, 1.0, 0.1, nullptr,
+      *eargs.mmat, *positions, *eargs.chiralCenters, 1.0, 0.1,
+      eargs.etkdgDetails->debugParams.customForcesForMinimizations.get(),
       embedParams.basinThresh, &fixedPts));
   if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
     for (const auto &v : *embedParams.coordMap) {
@@ -619,7 +619,8 @@ bool minimizeFourthDimension(RDGeom::PointPtrVect *positions,
   // increasing the weight on the fourth dimension
 
   std::unique_ptr<ForceFields::ForceField> field2(DistGeom::constructForceField(
-      *eargs.mmat, *positions, *eargs.chiralCenters, 0.2, 1.0, nullptr,
+      *eargs.mmat, *positions, *eargs.chiralCenters, 0.2, 1.0,
+      eargs.etkdgDetails->debugParams.customForcesForMinimizations.get(),
       embedParams.basinThresh));
   if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
     for (const auto &v : *embedParams.coordMap) {
@@ -854,8 +855,7 @@ bool finalChiralChecks(RDGeom::PointPtrVect *positions,
 }
 
 bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
-                 EmbedParameters &embedParams, int seed,
-                 DebugParameters &debugParams) {
+                 EmbedParameters &embedParams, int seed) {
   PRECONDITION(positions, "bogus positions");
   if (embedParams.maxIterations == 0) {
     embedParams.maxIterations = 10 * positions->size();
@@ -869,7 +869,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
   if (embedParams.useRandomCoords) {
     embedParams.basinThresh = 1e8;
   }
-
+  auto &debugDir = eargs.etkdgDetails->debugParams.pathForDistMatFiles;
   RDKit::double_source_type *rng = nullptr;
   RDKit::rng_type *generator = nullptr;
   RDKit::uniform_double *distrib = nullptr;
@@ -891,11 +891,10 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     if (embedParams.callback != nullptr) {
       embedParams.callback(iter);
     }
-    gotCoords = EmbeddingOps::generateInitialCoords(
-        positions, eargs, embedParams, distMat, rng, debugParams);
-    if (!debugParams.pathForDistMatFiles.empty()) {
-      printDistMat(nullptr, distMat,
-                   debugParams.pathForDistMatFiles + "initial_embedding.csv");
+    gotCoords = EmbeddingOps::generateInitialCoords(positions, eargs,
+                                                    embedParams, distMat, rng);
+    if (!debugDir.empty()) {
+      printDistMat(nullptr, distMat, debugDir + "initial_embedding.csv");
     }
     if (!gotCoords) {
       if (embedParams.trackFailures) {
@@ -907,9 +906,8 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     } else {
       gotCoords =
           EmbeddingOps::firstMinimization(positions, eargs, embedParams);
-      if (!debugParams.pathForDistMatFiles.empty()) {
-        printDistMat(nullptr, distMat,
-                     debugParams.pathForDistMatFiles + "after_first.csv");
+      if (!debugDir.empty()) {
+        printDistMat(nullptr, distMat, debugDir + "after_first.csv");
       }
       if (!gotCoords) {
         if (embedParams.trackFailures) {
@@ -952,9 +950,8 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           (eargs.chiralCenters->size() > 0 || embedParams.useRandomCoords)) {
         gotCoords = EmbeddingOps::minimizeFourthDimension(positions, eargs,
                                                           embedParams);
-        if (!debugParams.pathForDistMatFiles.empty()) {
-          printDistMat(nullptr, distMat,
-                       debugParams.pathForDistMatFiles + "after_4d.csv");
+        if (!debugDir.empty()) {
+          printDistMat(nullptr, distMat, debugDir + "after_4d.csv");
         }
         if (!gotCoords) {
           if (embedParams.trackFailures) {
@@ -972,9 +969,8 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
                         embedParams.useBasicKnowledge)) {
         gotCoords = EmbeddingOps::minimizeWithExpTorsions(*positions, eargs,
                                                           embedParams);
-        if (!debugParams.pathForDistMatFiles.empty()) {
-          printDistMat(nullptr, distMat,
-                       debugParams.pathForDistMatFiles + "after_etk.csv");
+        if (!debugDir.empty()) {
+          printDistMat(nullptr, distMat, debugDir + "after_etk.csv");
         }
         if (!gotCoords) {
           if (embedParams.trackFailures) {
@@ -1349,7 +1345,7 @@ bool multiplication_overflows_(T a, T b) {
 }
 
 void embedHelper_(int threadId, int numThreads, EmbedArgs *eargs,
-                  EmbedParameters *params, DebugParameters *debugParams) {
+                  EmbedParameters *params) {
   PRECONDITION(eargs, "bogus eargs");
   PRECONDITION(params, "bogus params");
   unsigned int nAtoms = eargs->mmat->numRows();
@@ -1414,8 +1410,8 @@ void embedHelper_(int threadId, int numThreads, EmbedArgs *eargs,
     }
     CHECK_INVARIANT(new_seed >= -1,
                     "Something went wrong calculating a new seed");
-    bool gotCoords = EmbeddingOps::embedPoints(&positions, *eargs, *params,
-                                               new_seed, *debugParams);
+    bool gotCoords =
+        EmbeddingOps::embedPoints(&positions, *eargs, *params, new_seed);
 
     // copy the coordinates into the correct conformer
     if (gotCoords) {
@@ -1617,7 +1613,7 @@ void EmbedMultipleConfs(ROMol &mol, INT_VECT &res, unsigned int numConfs,
       fourD = true;
     }
     int numThreads = getNumThreadsToUse(params.numThreads);
-
+    etkdgDetails.debugParams = debugParams;
     // do the embedding, using multiple threads if requested
     detail::EmbedArgs eargs = {&confsOk,        fourD,
                                &fragMapping,    &confs,
@@ -1626,15 +1622,14 @@ void EmbedMultipleConfs(ROMol &mol, INT_VECT &res, unsigned int numConfs,
                                &doubleBondEnds, &stereoDoubleBonds,
                                &etkdgDetails};
     if (numThreads == 1) {
-      detail::embedHelper_(0, 1, &eargs, &params, &debugParams);
+      detail::embedHelper_(0, 1, &eargs, &params);
     }
 #ifdef RDK_BUILD_THREADSAFE_SSS
     else {
       std::vector<std::future<void>> tg;
       for (int tid = 0; tid < numThreads; ++tid) {
         tg.emplace_back(std::async(std::launch::async, detail::embedHelper_,
-                                   tid, numThreads, &eargs, &params,
-                                   &debugParams));
+                                   tid, numThreads, &eargs, &params));
       }
       for (auto &fut : tg) {
         fut.get();

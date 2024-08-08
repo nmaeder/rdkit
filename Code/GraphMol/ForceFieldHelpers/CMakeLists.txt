@@ -11,7 +11,7 @@ rdkit_headers(UFF/AtomTyper.h
               UFF/Builder.h UFF/UFF.h DEST GraphMol/ForceFieldHelpers/UFF)
 rdkit_headers(MMFF/AtomTyper.h
               MMFF/Builder.h MMFF/MMFF.h DEST GraphMol/ForceFieldHelpers/MMFF)
-rdkit_headers(CrystalFF/TorsionAngleM6.h CrystalFF/TorsionPreferences.h
+rdkit_headers(GraphMol/DistGeomHelpers/Embedder.h CrystalFF/TorsionAngleM6.h CrystalFF/TorsionPreferences.h
               DEST GraphMol/ForceFieldHelpers/CrystalFF)
 
 rdkit_catch_test(forceFieldHelpersCatch catch_tests.cpp 
