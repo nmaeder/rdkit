@@ -62,6 +62,38 @@ constexpr double TETRAHEDRAL_CENTERINVOLUME_TOL = 0.30;
 inline bool haveOppositeSign(double a, double b) {
   return std::signbit(a) ^ std::signbit(b);
 }
+void printDistMat(RDGeom::PointPtrVect *positions,
+                  RDNumeric::DoubleSymmMatrix distMat, std::string filename) {
+  if (positions) {
+    double xi, xj, yi, yj, zi, zj, hi, hj, dist;
+    const auto N = distMat.numRows();
+    const auto fourD = positions->at(0)->dimension() == 4;
+    for (unsigned int i = 1; i < N; i++) {
+      for (unsigned int j = 0; j < i; j++) {
+        xi = (*positions->at(i))[0];
+        xj = (*positions->at(j))[0];
+        yi = (*positions->at(i))[1];
+        yj = (*positions->at(j))[1];
+        zi = (*positions->at(i))[2];
+        zj = (*positions->at(j))[2];
+        if (fourD) {
+          hi = (*positions->at(i))[3];
+          hj = (*positions->at(j))[3];
+          dist = pow(pow(xi - xj, 2) + pow(yi - yj, 2) + pow(zi - zj, 2) +
+                         pow(hi - hj, 2),
+                     0.5);
+        } else {
+          dist = pow(pow(xi - xj, 2) + pow(yi - yj, 2) + pow(zi - zj, 2), 0.5);
+        }
+        distMat.setVal(i, j, dist);
+      }
+    }
+  }
+  std::ofstream file;
+  file.open(filename);
+  file << distMat;
+  file.close();
+}
 
 }  // namespace
 
@@ -455,6 +487,7 @@ bool generateInitialCoords(RDGeom::PointPtrVect *positions,
   if (!embedParams.useRandomCoords) {
     double largestDistance =
         DistGeom::pickRandomDistMat(*eargs.mmat, distMat, *rng);
+    printDistMat(nullptr, distMat, "TODO");
     RDUNUSED_PARAM(largestDistance);
     gotCoords = DistGeom::computeInitialCoords(distMat, *positions, *rng,
                                                embedParams.randNegEig,
@@ -855,6 +888,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     }
     gotCoords = EmbeddingOps::generateInitialCoords(positions, eargs,
                                                     embedParams, distMat, rng);
+    printDistMat(positions, distMat, "TODO");
     if (!gotCoords) {
       if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -865,6 +899,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
     } else {
       gotCoords =
           EmbeddingOps::firstMinimization(positions, eargs, embedParams);
+      printDistMat(positions, distMat, "TODO");
       if (!gotCoords) {
         if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -906,6 +941,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
           (eargs.chiralCenters->size() > 0 || embedParams.useRandomCoords)) {
         gotCoords = EmbeddingOps::minimizeFourthDimension(positions, eargs,
                                                           embedParams);
+        printDistMat(positions, distMat, "TODO");
         if (!gotCoords) {
           if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
@@ -922,6 +958,7 @@ bool embedPoints(RDGeom::PointPtrVect *positions, detail::EmbedArgs eargs,
                         embedParams.useBasicKnowledge)) {
         gotCoords = EmbeddingOps::minimizeWithExpTorsions(*positions, eargs,
                                                           embedParams);
+        printDistMat(positions, distMat, "TODO");
         if (!gotCoords) {
           if (embedParams.trackFailures) {
 #ifdef RDK_BUILD_THREADSAFE_SSS
