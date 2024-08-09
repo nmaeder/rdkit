@@ -354,7 +354,7 @@ void add12Terms(ForceFields::ForceField *ff,
                 const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
                 boost::dynamic_bitset<> &atomPairs,
                 RDGeom::Point3DPtrVect &positions, double forceConstant,
-                unsigned int numAtoms) {
+                const BoundsMatrix &mmat, unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
   auto &dp = etkdgDetails.debugParams;
   for (const auto &bond : etkdgDetails.bonds) {
@@ -371,10 +371,18 @@ void add12Terms(ForceFields::ForceField *ff,
         dp.useCustomForcesInETKMin) {
       forceConstant = dp.customForcesForMinimizations->at(key);
     }
-    double d = ((*positions[i]) - (*positions[j])).length();
-    auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
-        ff, i, j, d - KNOWN_DIST_TOL, d + KNOWN_DIST_TOL, forceConstant);
-    ff->contribs().emplace_back(contrib);
+    if (dp.useBoundsInETKMins) {
+      const auto l = mmat.getLowerBound(i, j);
+      const auto u = mmat.getUpperBound(i, j);
+      auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
+          ff, i, j, l, u, forceConstant);
+      ff->contribs().emplace_back(contrib);
+    } else {
+      double d = ((*positions[i]) - (*positions[j])).length();
+      auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
+          ff, i, j, d - KNOWN_DIST_TOL, d + KNOWN_DIST_TOL, forceConstant);
+      ff->contribs().emplace_back(contrib);
+    }
   }
 }
 //! Add 1-3 distance constraints with padding at current positions to force
@@ -399,7 +407,8 @@ void add13Terms(ForceFields::ForceField *ff,
                 boost::dynamic_bitset<> &atomPairs,
                 RDGeom::Point3DPtrVect &positions, double forceConstant,
                 const boost::dynamic_bitset<> &isImproperConstrained,
-                bool useBasicKnowledge, unsigned int numAtoms) {
+                bool useBasicKnowledge, const BoundsMatrix &mmat,
+                unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
   auto &dp = etkdgDetails.debugParams;
   for (const auto &angle : etkdgDetails.angles) {
@@ -424,10 +433,18 @@ void add13Terms(ForceFields::ForceField *ff,
           dp.customForcesForMinimizations->count(key) > 0) {
         forceConstant = dp.customForcesForMinimizations->at(key);
       }
-      double d = ((*positions[i]) - (*positions[k])).length();
-      auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
-          ff, i, k, d - KNOWN_DIST_TOL, d + KNOWN_DIST_TOL, forceConstant);
-      ff->contribs().emplace_back(contrib);
+      if (dp.useBoundsInETKMins) {
+        const auto l = mmat.getLowerBound(i, k);
+        const auto u = mmat.getUpperBound(i, k);
+        auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
+            ff, i, k, l, u, forceConstant);
+        ff->contribs().emplace_back(contrib);
+      } else {
+        double d = ((*positions[i]) - (*positions[k])).length();
+        auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
+            ff, i, k, d - KNOWN_DIST_TOL, d + KNOWN_DIST_TOL, forceConstant);
+        ff->contribs().emplace_back(contrib);
+      }
     }
   }
 }
@@ -508,9 +525,9 @@ ForceFields::ForceField *construct3DForceField(
   addImproperTorsionTerms(field, etkdgDetails.debugParams.KTermPlanarityScaling,
                           etkdgDetails.improperAtoms, isImproperConstrained);
   add12Terms(field, etkdgDetails, atomPairs, positions,
-             KNOWN_DIST_FORCE_CONSTANT, N);
+             KNOWN_DIST_FORCE_CONSTANT, mmat, N);
   add13Terms(field, etkdgDetails, atomPairs, positions,
-             KNOWN_DIST_FORCE_CONSTANT, isImproperConstrained, true, N);
+             KNOWN_DIST_FORCE_CONSTANT, isImproperConstrained, true, mmat, N);
 
   // minimum distance for all other atom pairs that aren't constrained
   addLongRangeDistanceConstraints(field, etkdgDetails, atomPairs, positions,
@@ -557,9 +574,9 @@ ForceFields::ForceField *constructPlain3DForceField(
 
   addExperimentalTorsionTerms(field, etkdgDetails, atomPairs, N);
   add12Terms(field, etkdgDetails, atomPairs, positions,
-             KNOWN_DIST_FORCE_CONSTANT, N);
+             KNOWN_DIST_FORCE_CONSTANT, mmat, N);
   add13Terms(field, etkdgDetails, atomPairs, positions,
-             KNOWN_DIST_FORCE_CONSTANT, isImproperConstrained, false, N);
+             KNOWN_DIST_FORCE_CONSTANT, isImproperConstrained, false, mmat, N);
   // minimum distance for all other atom pairs that aren't constrained
   addLongRangeDistanceConstraints(field, etkdgDetails, atomPairs, positions,
                                   KNOWN_DIST_FORCE_CONSTANT, mmat, N);
