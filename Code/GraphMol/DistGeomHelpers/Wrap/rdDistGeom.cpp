@@ -175,8 +175,7 @@ int EmbedMolecule(ROMol &mol, unsigned int maxAttempts, int seed,
 }
 
 int EmbedMolecule2(ROMol &mol, DGeomHelpers::EmbedParameters &params,
-                   DGeomHelpers::DebugParameters debugParams =
-                       DGeomHelpers::DebugParameters()) {
+                   DGeomHelpers::DebugParameters &debugParams) {
   int res;
   {
     NOGIL gil;
@@ -226,8 +225,7 @@ INT_VECT EmbedMultipleConfs(
 
 INT_VECT EmbedMultipleConfs2(ROMol &mol, unsigned int numConfs,
                              DGeomHelpers::EmbedParameters &params,
-                             DGeomHelpers::DebugParameters debugParams =
-                                 DGeomHelpers::DebugParameters()) {
+                             DGeomHelpers::DebugParameters &debugParams) {
   INT_VECT res;
   {
     NOGIL gil;
@@ -238,8 +236,9 @@ INT_VECT EmbedMultipleConfs2(ROMol &mol, unsigned int numConfs,
 
 PyObject *getMolBoundsMatrixWithCustomBounds(
     ROMol &mol, const python::object &customBoundsMatrix,
-    bool set15bounds = true, bool scaleVDW = false,
-    bool doTriangleSmoothing = true, bool useMacrocycle14config = false,
+    pyDebugParameters debugParams, bool set15bounds = true,
+    bool scaleVDW = false, bool doTriangleSmoothing = true,
+    bool useMacrocycle14config = false,
     DGeomHelpers::EmbedFF embedForceField = DGeomHelpers::EmbedFF::UFF) {
   auto [nrows, sdata] = pyArrayToMatrix(customBoundsMatrix);
   unsigned int nats = mol.getNumAtoms();
@@ -255,9 +254,9 @@ PyObject *getMolBoundsMatrixWithCustomBounds(
   DistGeom::BoundsMatPtr mat(new DistGeom::BoundsMatrix(nats));
   DGeomHelpers::initBoundsMat(mat);
   auto forceTransAmides = true;
-  DGeomHelpers::setTopolBounds(mol, mat, cBoundsMat, set15bounds, scaleVDW,
-                               useMacrocycle14config, forceTransAmides,
-                               embedForceField);
+  DGeomHelpers::setTopolBounds(mol, mat, cBoundsMat, debugParams, set15bounds,
+                               scaleVDW, useMacrocycle14config,
+                               forceTransAmides, embedForceField);
   if (doTriangleSmoothing) {
     DistGeom::triangleSmoothBounds(mat);
   }
@@ -781,7 +780,8 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
   python::def(
       "GetMoleculeBoundsMatrix", RDKit::getMolBoundsMatrixWithCustomBounds,
       (python::arg("mol"), python::arg("customBoundsMatrix"),
-       python::arg("set15bounds") = true, python::arg("scaleVDW") = false,
+       python::arg("debugParams"), python::arg("set15bounds") = true,
+       python::arg("scaleVDW") = false,
        python::arg("doTriangleSmoothing") = true,
        python::arg("useMacrocycle14config") = false,
        python::arg("embedForceField") = RDKit::DGeomHelpers::EmbedFF::UFF),
