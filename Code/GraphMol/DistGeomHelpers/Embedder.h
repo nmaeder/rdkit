@@ -45,37 +45,67 @@ enum EmbedFailureCauses {
  */
 enum class EmbedFF { UFF, MMFF };
 
+//! Parameter object for debugging and optimizing DG
+/*!
+  \param useBoundsInETKMins  Whether to use the bounds instead of the current
+  values for constraining the 1-2 and 1-3 distances in the ETK minimization
+  \param disableKTerms  Whether to disable the K terms in the ETK minimization,
+  !this does not disable the etk minimization itself!
+  \param disableETTerms  Whether to disable the ET terms in the ETK
+  minimization, !this does not disable the etk minimization itself!
+  \param KTermLinearityForceConstant What value to use for constraining SP
+  centers to 180 degrees. !This is not devided by 2!
+  \param KTermPlanarityScaling What number to scale the planarity terms with
+  \param pathForDistMatFiles Where to store the debuging distance matrices, if
+  "" they are not saved
+  \param scaleMMFFForDash When using MMFF bounds, should they be scaled to match
+  the DASH 12 and 13 distances
+  \param customForcesForMinimizations custom forces to use in the distance
+  constraints throughout the dg process. If a atom pair is not specified, it is
+  set to 1
+  \param useCustomForcesInFirstMin Whether to use custom forces in frist min
+  \param useCustomForcesIn4DMin Whether to use custom forces in 4d min
+  \param useCustomForcesInETKMin Whether to use custom forces in etk min
+*/
 struct DebugParameters {
-  bool useBoundsInETKMins{false};
-  bool disableKTerms{false};
-  bool disableETTerms{false};
-  double KTermLinearityForceconstant{10.0};
-  double KTermPlanarityForceconstant{1.0};
-  double ETTermForceConstant{10.0};
-  std::string pathForDistMatFiles{""};
-  bool scaleMMFFForDash{false};
+  bool useBoundsInETKMins;
+  bool disableKTerms;
+  bool disableETTerms;
+  double KTermLinearityForceconstant;
+  double KTermPlanarityScaling;
+  std::string pathForDistMatFiles;
+  bool scaleMMFFForDash;
   std::shared_ptr<std::map<std::pair<int, int>, double>>
-      customForcesForMinimizations{
-          std::make_shared<std::map<std::pair<int, int>, double>>()};
+      customForcesForMinimizations;
+  bool useCustomForcesInFirstMin;
+  bool useCustomForcesIn4DMin;
+  bool useCustomForcesInETKMin;
 
   DebugParameters(
       bool useBoundsInETKMins = false, bool disableKTerms = false,
-      bool disableETTerms = false, double KTermLinearityForceconstant = 10.0,
-      double KTermPlanarityForceconstant = 1.0,
-      double ETTermForceConstant = 10.0, std::string pathForDistMatFiles = "",
+      bool disableETTerms = false, double KTermLinearityForceconstant = 1.0,
+      double KTermPlanarityScaling = 10.0, std::string pathForDistMatFiles = "",
       bool scaleMMFFForDash = false,
       std::shared_ptr<std::map<std::pair<int, int>, double>>
           customForcesForMinimizations =
-              std::make_shared<std::map<std::pair<int, int>, double>>())
+              std::make_shared<std::map<std::pair<int, int>, double>>(),
+      bool useCustomForcesInFirstMin = true, bool useCustomForcesIn4DMin = true,
+      bool useCustomForcesInETKMin = true)
       : useBoundsInETKMins(useBoundsInETKMins),
         disableKTerms(disableKTerms),
         disableETTerms(disableETTerms),
         KTermLinearityForceconstant(KTermLinearityForceconstant),
-        KTermPlanarityForceconstant(KTermPlanarityForceconstant),
-        ETTermForceConstant(ETTermForceConstant),
+        KTermPlanarityScaling(KTermPlanarityScaling),
         pathForDistMatFiles(pathForDistMatFiles),
         scaleMMFFForDash(scaleMMFFForDash),
-        customForcesForMinimizations(std::move(customForcesForMinimizations)) {}
+        customForcesForMinimizations(std::move(customForcesForMinimizations)),
+        useCustomForcesInFirstMin(useCustomForcesInFirstMin),
+        useCustomForcesIn4DMin(useCustomForcesIn4DMin),
+        useCustomForcesInETKMin(useCustomForcesInETKMin) {
+    if (!pathForDistMatFiles.empty() && pathForDistMatFiles.back() != '/') {
+      pathForDistMatFiles += '_';
+    }
+  }
 };
 
 const auto defaultDebugParams = DebugParameters();

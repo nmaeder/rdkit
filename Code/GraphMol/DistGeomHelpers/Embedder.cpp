@@ -529,9 +529,11 @@ bool firstMinimization(RDGeom::PointPtrVect *positions,
       fixedPts.set(v.first);
     }
   }
+  auto &dp = eargs.etkdgDetails->debugParams;
   std::unique_ptr<ForceFields::ForceField> field(DistGeom::constructForceField(
       *eargs.mmat, *positions, *eargs.chiralCenters, 1.0, 0.1,
-      eargs.etkdgDetails->debugParams.customForcesForMinimizations.get(),
+      dp.useCustomForcesInFirstMin ? dp.customForcesForMinimizations.get()
+                                   : nullptr,
       embedParams.basinThresh, &fixedPts));
   if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
     for (const auto &v : *embedParams.coordMap) {
@@ -617,10 +619,11 @@ bool minimizeFourthDimension(RDGeom::PointPtrVect *positions,
   // or have started from random coords. This
   // time removing the chiral constraints and
   // increasing the weight on the fourth dimension
-
+  auto &dp = eargs.etkdgDetails->debugParams;
   std::unique_ptr<ForceFields::ForceField> field2(DistGeom::constructForceField(
       *eargs.mmat, *positions, *eargs.chiralCenters, 0.2, 1.0,
-      eargs.etkdgDetails->debugParams.customForcesForMinimizations.get(),
+      dp.useCustomForcesIn4DMin ? dp.customForcesForMinimizations.get()
+                                : nullptr,
       embedParams.basinThresh));
   if (embedParams.useRandomCoords && embedParams.coordMap != nullptr) {
     for (const auto &v : *embedParams.coordMap) {

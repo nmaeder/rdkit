@@ -407,7 +407,8 @@ void add13Terms(ForceFields::ForceField *ff,
     // check for triple bonds
     if (useBasicKnowledge && angle[3]) {
       auto *contrib = new ForceFields::UFF::AngleConstraintContrib(
-          ff, i, j, k, 179.0, 180.0, 1);
+          ff, i, j, k, 179.0, 180.0,
+          etkdgDetails.debugParams.KTermLinearityForceconstant);
       ff->contribs().emplace_back(contrib);
     } else if (!isImproperConstrained[j]) {
       double d = ((*positions[i]) - (*positions[k])).length();
@@ -485,8 +486,8 @@ ForceFields::ForceField *construct3DForceField(
   boost::dynamic_bitset<> isImproperConstrained(N);
 
   addExperimentalTorsionTerms(field, etkdgDetails, atomPairs, N);
-  addImproperTorsionTerms(field, 10.0, etkdgDetails.improperAtoms,
-                          isImproperConstrained);
+  addImproperTorsionTerms(field, etkdgDetails.debugParams.KTermPlanarityScaling,
+                          etkdgDetails.improperAtoms, isImproperConstrained);
   add12Terms(field, etkdgDetails, atomPairs, positions,
              KNOWN_DIST_FORCE_CONSTANT, N);
   add13Terms(field, etkdgDetails, atomPairs, positions,

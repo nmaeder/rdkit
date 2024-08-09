@@ -118,9 +118,13 @@ struct pyDebugParameters
     auto numKeys = python::extract<unsigned int>(keys.attr("__len__")());
     for (unsigned int i = 0; i < numKeys; ++i) {
       python::tuple id = python::extract<python::tuple>(keys[i]);
-      unsigned int a = python::extract<unsigned int>(id[0]);
-      unsigned int b = python::extract<unsigned int>(id[1]);
-      (*customForcesForMinimizations)[std::make_pair(a, b)] =
+      int a = python::extract<int>(id[0]);
+      int b = python::extract<int>(id[1]);
+      auto key = std::make_pair(a, b);
+      if (b > a) {
+        std::swap(key.first, key.second);
+      }
+      (*customForcesForMinimizations)[key] =
           python::extract<double>(forceDict[id]);
     }
   }
@@ -535,31 +539,43 @@ BOOST_PYTHON_MODULE(rdDistGeom) {
       .def_readwrite(
           "useBoundsInETKMins", &pyDebugParameters::useBoundsInETKMins,
           "Whether to use the bounds instead of the current values for "
-          "constraining bonds and angles in the ETK minimzation.")
+          "constraining the 1-2 and 1-3 distances in the ETK minimization")
       .def_readwrite("disableKTerms", &pyDebugParameters::disableKTerms,
-                     "whether to disable K terms in etk minimization.")
-      .def_readwrite("disableETTerms", &pyDebugParameters::disableETTerms,
-                     "whether to disable ET terms in etk minimization.")
+                     "Whether to disable the K terms in the ETK minimization, "
+                     "!this does not disable the etk minimization itself!")
+      .def_readwrite(
+          "disableETTerms", &pyDebugParameters::disableETTerms,
+          "Whether to disable the ET terms in the ETK "
+          "minimization, !this does not disable the etk minimization itself!")
       .def_readwrite("KTermLinearityForceconstant",
                      &pyDebugParameters::KTermLinearityForceconstant,
-                     "Force constant for linearity terms in KDG.")
-      .def_readwrite("KTermPlanarityForceconstant",
-                     &pyDebugParameters::KTermPlanarityForceconstant,
-                     "Force Constant for planarity terms in KDG.")
-      .def_readwrite("ETTermForceConstant",
-                     &pyDebugParameters::ETTermForceConstant,
-                     "Force Constant for ET terms.")
+                     "What value to use for constraining SP "
+                     "centers to 180 degrees. !This is not devided by 2!")
+      .def_readwrite("KTermPlanarityScaling",
+                     &pyDebugParameters::KTermPlanarityScaling,
+                     "What number to scale the planarity terms with")
       .def_readwrite("pathForDistMatFiles",
                      &pyDebugParameters::pathForDistMatFiles,
-                     "Dir where distMatrix files shoud be stored.")
+                     "Where to store the debuging distance matrices, if "
+                     "'' they are not saved")
       .def_readwrite("scaleMMFFForDash", &pyDebugParameters::scaleMMFFForDash,
-                     "Whether to scale mmff 12 and 13 bounds for DASH.")
+                     "When using MMFF bounds, should they be scaled to match "
+                     "the DASH 12 and 13 distances")
       .def(
           "SetCustomForcesForMinimizations",
           &pyDebugParameters::setCustomForcesForMinimizations,
           python::args("self", "forceDict"),
-          "Forces to be used in the different minimzations of the Molecule "
-          "embedding process. If an atom pair has none provided, defaults to 1.");
+          "Fcustom forces to use in the distance constraints throughout the dg "
+          "process. If a atom pair is not specified, it is set to 1")
+      .def_readwrite("useCustomForcesInFirstMin",
+                     &pyDebugParameters::useCustomForcesInFirstMin,
+                     "Whether to use custom forces in frist min")
+      .def_readwrite("useCustomForcesIn4DMin",
+                     &pyDebugParameters::useCustomForcesIn4DMin,
+                     "Whether to use custom forces in 4d min")
+      .def_readwrite("useCustomForcesInETKMin",
+                     &pyDebugParameters::useCustomForcesInETKMin,
+                     "Whether to use custom forces in etk min");
   python::class_<PyEmbedParameters, boost::noncopyable>(
       "EmbedParameters", "Parameters controlling embedding")
       .def_readwrite("maxIterations", &PyEmbedParameters::maxIterations,
