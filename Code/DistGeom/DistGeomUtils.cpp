@@ -356,13 +356,20 @@ void add12Terms(ForceFields::ForceField *ff,
                 RDGeom::Point3DPtrVect &positions, double forceConstant,
                 unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
+  auto &dp = etkdgDetails.debugParams;
   for (const auto &bond : etkdgDetails.bonds) {
     unsigned int i = bond.first;
     unsigned int j = bond.second;
+    auto key = std::make_pair(i, j);
     if (i < j) {
+      std::swap(key.first, key.second);
       atomPairs[i * numAtoms + j] = 1;
     } else {
       atomPairs[j * numAtoms + i] = 1;
+    }
+    if (dp.customForcesForMinimizations->count(key) > 0 &&
+        dp.useCustomForcesInETKMin) {
+      forceConstant = dp.customForcesForMinimizations->at(key);
     }
     double d = ((*positions[i]) - (*positions[j])).length();
     auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
@@ -379,12 +386,12 @@ void add12Terms(ForceFields::ForceField *ff,
   \param atomPairs bit set for every atom pair in the molecule where
   a bit is set to one when the atom pair is the both end atoms of a 13
   contribution that is constrained here
-  \param positions A vector of pointers to 3D Points to write out the resulting
-  coordinates \param forceConstant force constant with which to constrain bond
-  distances \param isImproperConstrained bit vector with length of total num
-  atoms of the molecule where index of every central atom of improper torsion is
-  set to one \param useBasicKnowledge whether to use basic knowledge terms
-  \param numAtoms number of atoms in molecule
+  \param positions A vector of pointers to 3D Points to write out the
+  resulting coordinates \param forceConstant force constant with which to
+  constrain bond distances \param isImproperConstrained bit vector with length
+  of total num atoms of the molecule where index of every central atom of
+  improper torsion is set to one \param useBasicKnowledge whether to use basic
+  knowledge terms \param numAtoms number of atoms in molecule
 
 */
 void add13Terms(ForceFields::ForceField *ff,
@@ -394,13 +401,15 @@ void add13Terms(ForceFields::ForceField *ff,
                 const boost::dynamic_bitset<> &isImproperConstrained,
                 bool useBasicKnowledge, unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
+  auto &dp = etkdgDetails.debugParams;
   for (const auto &angle : etkdgDetails.angles) {
     unsigned int i = angle[0];
     unsigned int j = angle[1];
     unsigned int k = angle[2];
-
+    auto key = std::make_pair(i, k);
     if (i < k) {
       atomPairs[i * numAtoms + k] = 1;
+      std::swap(key.first, key.second);
     } else {
       atomPairs[k * numAtoms + i] = 1;
     }
@@ -411,6 +420,10 @@ void add13Terms(ForceFields::ForceField *ff,
           etkdgDetails.debugParams.KTermLinearityForceconstant);
       ff->contribs().emplace_back(contrib);
     } else if (!isImproperConstrained[j]) {
+      if (dp.useCustomForcesInETKMin &&
+          dp.customForcesForMinimizations->count(key) > 0) {
+        forceConstant = dp.customForcesForMinimizations->at(key);
+      }
       double d = ((*positions[i]) - (*positions[k])).length();
       auto *contrib = new ForceFields::UFF::DistanceConstraintContrib(
           ff, i, k, d - KNOWN_DIST_TOL, d + KNOWN_DIST_TOL, forceConstant);
@@ -419,7 +432,8 @@ void add13Terms(ForceFields::ForceField *ff,
   }
 }
 
-//! Add long distance constraints to bounds matrix borders or constrained atoms
+//! Add long distance constraints to bounds matrix borders or constrained
+//! atoms
 /// when provideds
 /*!
 
@@ -430,9 +444,8 @@ void add13Terms(ForceFields::ForceField *ff,
   with respect to each other
   \param positions A vector of pointers to 3D Points to write out the
   resulting coordinates
-  \param knownDistanceForceConstant force constant with which to constrain bond
-  distances
-  \param mmat  Bounds matrix to use bounds from for constraints
+  \param knownDistanceForceConstant force constant with which to constrain
+  bond distances \param mmat  Bounds matrix to use bounds from for constraints
   \param numAtoms number of atoms in molecule
 
 */
@@ -443,13 +456,19 @@ void addLongRangeDistanceConstraints(
     double knownDistanceForceConstant, const BoundsMatrix &mmat,
     unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
+  auto &dp = etkdgDetails.debugParams;
   double fdist = knownDistanceForceConstant;
   for (unsigned int i = 1; i < numAtoms; ++i) {
     for (unsigned int j = 0; j < i; ++j) {
       if (!atomPairs[j * numAtoms + i]) {
+        const auto key = std::make_pair(i, j);
         fdist = etkdgDetails.boundsMatForceScaling * 10.0;
         double l = mmat.getLowerBound(i, j);
         double u = mmat.getUpperBound(i, j);
+        if (dp.useBoundsInETKMins &&
+            dp.customForcesForMinimizations->count(key)) {
+          fdist = dp.customForcesForMinimizations->at(key);
+        }
         if (!etkdgDetails.constrainedAtoms.empty() &&
             etkdgDetails.constrainedAtoms[i] &&
             etkdgDetails.constrainedAtoms[j]) {
