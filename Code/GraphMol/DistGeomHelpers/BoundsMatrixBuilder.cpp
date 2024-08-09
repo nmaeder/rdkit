@@ -1999,7 +1999,12 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
   ComputedData accumData(na, nb);
   double *distMatrix = nullptr;
   distMatrix = MolOps::getDistanceMat(mol);
-
+  if (embedForceField == EmbedFF::UFF && debugParams.scaleMMFFForDash) {
+    BOOST_LOG(rdWarningLog)
+        << "You selected uff as embed ff and scaling mmff to dash, "
+           "this is probabely giving you weird distances, fyi"
+        << std::endl
+  }
   bool embeddSuccesfull = false;
   if (embedForceField == EmbedFF::MMFF) {
     embeddSuccesfull =
