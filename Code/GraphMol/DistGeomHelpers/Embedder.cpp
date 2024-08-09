@@ -687,7 +687,8 @@ bool minimizeWithExpTorsions(RDGeom::PointPtrVect &positions,
   // std::cout << field->calcEnergy() << std::endl;
 
   // check for planarity if ETKDG or KDG
-  if (embedParams.useBasicKnowledge) {
+  if (embedParams.useBasicKnowledge &&
+      !eargs.etkdgDetails->debugParams.disableKTerms) {
     // create a force field with only the impropers
     std::unique_ptr<ForceFields::ForceField> field2(
         DistGeom::construct3DImproperForceField(*eargs.mmat, positions3D,

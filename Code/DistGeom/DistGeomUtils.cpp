@@ -320,6 +320,9 @@ void addExperimentalTorsionTerms(
     const ForceFields::CrystalFF::CrystalFFDetails &etkdgDetails,
     boost::dynamic_bitset<> &atomPairs, unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
+  if (etkdgDetails.debugParams.disableETTerms) {
+    return;
+  }
   for (unsigned int t = 0; t < etkdgDetails.expTorsionAtoms.size(); ++t) {
     int i = etkdgDetails.expTorsionAtoms[t][0];
     int j = etkdgDetails.expTorsionAtoms[t][1];
@@ -411,6 +414,9 @@ void add13Terms(ForceFields::ForceField *ff,
                 unsigned int numAtoms) {
   PRECONDITION(ff, "bad force field");
   auto &dp = etkdgDetails.debugParams;
+  if (dp.disableKTerms) {
+    useBasicKnowledge = false;
+  }
   for (const auto &angle : etkdgDetails.angles) {
     unsigned int i = angle[0];
     unsigned int j = angle[1];
@@ -522,8 +528,11 @@ ForceFields::ForceField *construct3DForceField(
   boost::dynamic_bitset<> isImproperConstrained(N);
 
   addExperimentalTorsionTerms(field, etkdgDetails, atomPairs, N);
-  addImproperTorsionTerms(field, etkdgDetails.debugParams.KTermPlanarityScaling,
-                          etkdgDetails.improperAtoms, isImproperConstrained);
+  if (!etkdgDetails.debugParams.disableKTerms) {
+    addImproperTorsionTerms(field,
+                            etkdgDetails.debugParams.KTermPlanarityScaling,
+                            etkdgDetails.improperAtoms, isImproperConstrained);
+  }
   add12Terms(field, etkdgDetails, atomPairs, positions,
              KNOWN_DIST_FORCE_CONSTANT, mmat, N);
   add13Terms(field, etkdgDetails, atomPairs, positions,
