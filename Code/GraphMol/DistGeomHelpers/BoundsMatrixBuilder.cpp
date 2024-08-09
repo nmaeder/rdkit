@@ -2003,7 +2003,7 @@ void setTopolBounds(const ROMol &mol, DistGeom::BoundsMatPtr mmat,
     BOOST_LOG(rdWarningLog)
         << "You selected uff as embed ff and scaling mmff to dash, "
            "this is probabely giving you weird distances, fyi"
-        << std::endl
+        << std::endl;
   }
   bool embeddSuccesfull = false;
   if (embedForceField == EmbedFF::MMFF) {
